@@ -1,452 +1,306 @@
-# Backend Architecture Overview
+# School ERP — Architecture
 
-## Project Structure
-
-```
-SchoolERP/
-├── backend/
-│   ├── apps/
-│   │   ├── accounts/              # User management and authentication
-│   │   │   ├── models/
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── user.py        # Custom User model
-│   │   │   │   ├── role.py        # Role model
-│   │   │   │   ├── permission.py  # Permission model
-│   │   │   │   ├── user_role.py   # User-Role junction
-│   │   │   │   ├── role_permission.py  # Role-Permission junction
-│   │   │   │   └── login_history.py # Login tracking
-│   │   │   ├── api/
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── auth_views.py  # Authentication views
-│   │   │   │   └── user_views.py  # User management views
-│   │   │   ├── serializers/
-│   │   │   │   ├── __init__.py
-│   │   │   │   └── auth_serializers.py
-│   │   │   ├── management/
-│   │   │   │   └── commands/
-│   │   │   │       └── create_initial_roles.py
-│   │   │   ├── admin.py           # Django admin configuration
-│   │   │   ├── urls.py            # URL routing
-│   │   │   └── apps.py
-│   │   │
-│   │   └── core/                  # Core utilities
-│   │       └── models/
-│   │           └── base_model.py  # Abstract base model
-│   │
-│   ├── config/
-│   │   ├── settings/
-│   │   │   ├── base.py            # Common settings
-│   │   │   ├── development.py     # Development settings
-│   │   │   └── production.py      # Production settings
-│   │   ├── urls.py                # Project URL routing
-│   │   ├── wsgi.py
-│   │   └── asgi.py
-│   │
-│   ├── logs/                      # Application logs
-│   ├── media/                     # User uploads
-│   ├── static/                    # Static files
-│   ├── templates/                 # HTML templates
-│   ├── manage.py
-│   ├── requirements.txt
-│   └── .env                       # Environment variables
-│
-├── frontend/                      # React/Vue frontend (future)
-├── docs/                          # Documentation
-└── API_DOCUMENTATION.md           # API reference
-```
+This document describes the design of the rebuilt School ERP system: the Django
+backend, the React frontend, the role model and the security model.
 
 ---
 
-## Architecture Layers
+## 1. System overview
 
-### 1. **Models Layer** (`apps/accounts/models/`)
-Defines database schema and business logic
-
-**Key Models:**
-- `User` - Custom user model extending Django's AbstractUser
-- `Role` - Role definitions for RBAC
-- `Permission` - Fine-grained permission definitions
-- `UserRole` - Junction table for User-Role relationships
-- `RolePermission` - Junction table for Role-Permission relationships
-- `LoginHistory` - Audit trail for login attempts
-- `BaseModel` - Abstract base model with common fields (uuid, timestamps, soft delete)
-
-### 2. **Serializers Layer** (`apps/accounts/serializers/`)
-Data validation and transformation for API requests/responses
-
-**Key Serializers:**
-- `UserSerializer` - User data representation
-- `UserRegistrationSerializer` - Registration validation
-- `UserLoginSerializer` - Login credential validation
-- `CustomTokenObtainPairSerializer` - JWT token generation with custom claims
-- `ChangePasswordSerializer` - Password change validation
-
-### 3. **API Views Layer** (`apps/accounts/api/`)
-HTTP endpoints and business logic
-
-**Key Views:**
-- `RegisterView` - User registration endpoint
-- `LoginView` - User authentication endpoint
-- `LogoutView` - User logout with session tracking
-- `ChangePasswordView` - Password change endpoint
-- `CurrentUserView` - Get/update current user profile
-- `UserViewSet` - User management CRUD operations
-- `CustomTokenObtainPairView` - JWT token issuance with email support
-
-### 4. **URL Routing** (`apps/accounts/urls.py`)
-Maps endpoints to views
-
-**URL Pattern:**
 ```
-/api/v1/accounts/auth/register/       - User registration
-/api/v1/accounts/auth/login/          - User login
-/api/v1/accounts/auth/logout/         - User logout
-/api/v1/accounts/auth/token/refresh/  - Refresh JWT token
-/api/v1/accounts/auth/change-password/- Change password
-/api/v1/accounts/auth/me/             - Get current user
-/api/v1/accounts/users/               - List/create users
-/api/v1/accounts/users/{uuid}/        - Retrieve/update user
+┌─────────────────────────────────────────────────────────────────────┐
+│                         Browser (SPA / React)                       │
+│  Access token kept in memory · Refresh token in HttpOnly cookie      │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │ HTTPS (JSON API, Bearer access token)
+┌──────────────────────────────▼──────────────────────────────────────┐
+│                     Django / Django REST Framework                  │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐ │
+│  │ accounts │ │academics │ │attendance│ │  exams   │ │  finance  │ │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └───────────┘ │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────────────┐  │
+│  │communicat│ │dashboard │ │   core   │ │  config (settings)    │  │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────────────────┘  │
+└───────────────┬────────────────────────────────┬───────────────────┘
+                │                                │
+        ┌───────▼───────┐                ┌───────▼───────┐
+        │ SQLite / PG   │                │ Media (S3/disk)│
+        └───────────────┘                └───────────────┘
 ```
 
-### 5. **Configuration Layer** (`config/`)
-Settings and global configuration
-
-**Key Files:**
-- `base.py` - Common settings for all environments
-- `development.py` - Development-specific settings
-- `production.py` - Production-specific settings
+The backend exposes a versioned REST API under `/api/v1/` and serves the built
+React SPA at `/` (SPA fallback). Static files are served by whitenoise.
 
 ---
 
-## Authentication Flow
-
-### JWT Authentication
-
-1. **User Registration**
-   ```
-   POST /api/v1/accounts/auth/register/
-   → UserRegistrationSerializer validates data
-   → User model creates account with hashed password
-   → Tokens generated via RefreshToken.for_user()
-   ```
-
-2. **User Login**
-   ```
-   POST /api/v1/accounts/auth/login/
-   → CustomTokenObtainPairSerializer validates credentials
-   → JWT tokens generated with custom claims (email, full_name)
-   → LoginHistory records login attempt
-   ```
-
-3. **Protected Endpoints**
-   ```
-   Authorization: Bearer <access_token>
-   → JWTAuthentication validates token
-   → User extracted from token claims
-   → Permission checks applied
-   ```
-
-4. **Token Refresh**
-   ```
-   POST /api/v1/accounts/auth/token/refresh/
-   → Refresh token validated
-   → New access token issued
-   → Refresh token rotated
-   ```
-
----
-
-## Authorization (RBAC)
-
-### Role-Based Access Control
-
-1. **Roles** - Define user categories
-   - Admin
-   - Teacher
-   - Student
-   - Parent
-
-2. **Permissions** - Define allowed actions
-   - `view_user`, `add_user`, `change_user`, `delete_user`
-   - `view_course`, `add_course`, `change_course`, `delete_course`
-   - `view_grade`, `add_grade`, `change_grade`, `delete_grade`
-
-3. **Assignment Flow**
-   ```
-   User --[UserRole]--> Role --[RolePermission]--> Permission
-   ```
-
-4. **Permission Checking**
-   - Custom permission classes can be created
-   - Permission checks in views/viewsets
-   - Admin actions restricted to superusers
-
----
-
-## Database Design
-
-### BaseModel (Abstract)
-All models inherit common fields:
-- `uuid` - Public identifier (UUID v4, indexed)
-- `is_active` - Soft delete flag (indexed)
-- `created_at` - Creation timestamp (indexed)
-- `updated_at` - Last update timestamp
-
-### Relationships
+## 2. Project layout
 
 ```
-User (1) ---> (Many) UserRole
-                        |
-                    Role (1) ---> (Many) RolePermission
-                                              |
-                                        Permission
-
-User (1) ---> (Many) LoginHistory
-
-UserRole: user + role (unique together)
-RolePermission: role + permission (unique together)
-```
-
-### Indexes
-- `user.email` - Fast email lookups
-- `user.is_active` - Filter active users
-- `user.created_at` - Sort by creation date
-- `role.name` - Fast role lookups
-- `loginhistory.user, -login_time` - Recent logins
-- `loginhistory.ip_address` - IP tracking
-
----
-
-## Security Features
-
-### 1. **Password Security**
-- Passwords hashed using Django's PBKDF2 algorithm
-- Minimum 8 characters required
-- Password confirmation validation during registration
-
-### 2. **JWT Tokens**
-- Access tokens expire in 24 hours (configurable)
-- Refresh tokens valid for 7 days
-- Token rotation enabled
-- Tokens include custom claims (email, full_name)
-
-### 3. **CORS Protection**
-- Whitelist of allowed origins
-- Credentials allowed in requests
-- Configurable per environment
-
-### 4. **Login Auditing**
-- All login attempts logged to LoginHistory
-- IP address and device info recorded
-- Failed login reasons captured
-- Session duration tracked
-
-### 5. **Soft Deletes**
-- Records marked inactive instead of deleted
-- Preserves referential integrity
-- Historical data preserved
-
----
-
-## API Response Format
-
-### Success Response
-```json
-{
-  "message": "Operation successful",
-  "data": { ... }
-}
-```
-
-### Error Response
-```json
-{
-  "error": "Error message",
-  "details": { ... }
-}
+backend/
+├── config/
+│   ├── settings/
+│   │   ├── base.py           # shared settings, security, DRF, JWT, throttling
+│   │   ├── development.py    # DEBUG=True, permissive local defaults
+│   │   └── production.py     # DEBUG=False + hard-fail checks for unsafe config
+│   ├── urls.py               # API v1, admin, api/schema, api/docs, SPA fallback
+│   ├── wsgi.py / asgi.py
+│   └── middleware.py         # CSP + security headers
+├── apps/
+│   ├── core/                 # BaseModel, RBAC permissions, pagination, filters,
+│   │                         # exceptions, middleware, SPA view, utils
+│   ├── accounts/             # custom User, Role/Permission, JWT auth, login history
+│   ├── academics/            # years, classes, sections, subjects, profiles,
+│   │                         # guardian links, timetable
+│   ├── attendance/           # attendance records, bulk marking, summaries
+│   ├── exams/                # exams, papers, results, report cards, analytics
+│   ├── finance/              # fee categories, structures, invoices, payments
+│   ├── communication/        # announcements + read receipts
+│   └── dashboard/            # role-aware overview + global search + health
+├── tests/                    # pytest suite (conftest + 7 test modules, 70 tests)
+├── manage.py
+└── requirements.txt
 ```
 
 ---
 
-## Environment Configuration
+## 3. Apps and responsibilities
 
-### .env File
+| App           | Responsibility                                                        |
+|---------------|-----------------------------------------------------------------------|
+| `accounts`    | Custom email user, RBAC (Role/Permission/UserRole/RolePermission), JWT auth endpoints, admin user CRUD, login history, management commands (`create_initial_roles`, `seed_demo_data`) |
+| `academics`   | Academic years, classes, sections, subjects, class-subject assignments, teacher/student/guardian profiles, guardian links, timetable |
+| `attendance`  | Per-student attendance, bulk marking, section sheet, summaries, "today" |
+| `exams`       | Exams, exam subjects/papers, results, grade bands, publishing, report cards with rank, analytics |
+| `finance`     | Fee categories, fee structures, invoices (bulk generate), payments (atomic), receipts, summaries |
+| `communication` | Announcements with audience (all/students/parents/teachers/class) and read receipts |
+| `dashboard`   | Role-aware overview aggregates, global search, health check |
+| `core`        | Shared `BaseModel`, RBAC permission classes, pagination, filters, error format, security middleware, SPA view |
 
-```ini
-# Django
-DEBUG=True
-SECRET_KEY=your-secret-key-here
-ALLOWED_HOSTS=127.0.0.1,localhost
+---
 
-# Database
-DB_ENGINE=django.db.backends.sqlite3
-DB_NAME=db.sqlite3
+## 4. Identity, roles and access control
 
-# JWT
-JWT_ALGORITHM=HS256
-JWT_EXPIRATION_HOURS=24
+### 4.1 Custom user
 
-# CORS
-CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
+`accounts.User` extends `AbstractUser` and uses **email** as the unique login
+identifier (no username). Key fields:
 
-# Internationalization
-LANGUAGE_CODE=en-us
-TIME_ZONE=Asia/Dhaka
+- `uuid` — public identifier used everywhere in the API (never expose the PK).
+- `role_names` / `primary_role` — cached role helper properties.
+- `is_admin` — true for superusers *or* users holding the `Admin` role.
+- `failed_login_attempts`, `locked_until`, `is_locked` — lockout support.
+- `must_change_password` — set for admin-created accounts with a temp password.
+- `last_password_change`, `token_version` — credential-change bookkeeping.
+- `profile_image` — validated image upload (2 MB, allow-listed types).
+
+### 4.2 Roles
+
+Five system roles are seeded by `create_initial_roles`:
+
+| Role        | Typical access                                                                |
+|-------------|-------------------------------------------------------------------------------|
+| `Admin`     | Full access to everything, including user/role management.                     |
+| `Teacher`   | Reads on academics; attendance marking and result entry for own sections; targeted announcements. |
+| `Accountant`| Finance management (fee setup, invoices, payments); no access to people/users. |
+| `Student`   | Own profile, own attendance, own results (published), own invoices; read-only. |
+| `Parent`    | Linked children only (attendance, results, invoices); read-only.               |
+
+Permissions are stored as bare action codes (e.g. `view_student`,
+`mark_attendance`) and assigned to roles. Custom roles can be created in the
+Roles screen.
+
+### 4.3 Row-level scoping (IDOR protection)
+
+Every list/detail queryset is scoped to the current user, so a user can never
+read or write a record they do not own:
+
+- **Students** — students see only their own profile; parents see only linked
+  children; teachers see only students in their assigned sections; admins see all.
+- **Teachers** — teachers see only their own teacher profile in the directory.
+- **Invoices/Payments** — students/parents see only their own; teachers get
+  `403`; accountants/admins see all.
+- **Announcements** — filtered by audience and class; teachers can only edit
+  their own.
+- **Exam results** — hidden until published; teachers can only enter marks for
+  exam subjects they manage; parents only for linked children.
+
+Guessing another user's UUID returns `404` (never reveals existence).
+
+---
+
+## 5. Authentication design
+
+### 5.1 Tokens
+
+- **Access token**: 15-minute JWT kept **in memory only** in the browser
+  (`lib/api.js`). It is never written to `localStorage`/`sessionStorage`, which
+  limits the blast radius of XSS.
+- **Refresh token**: 1-day JWT stored in an **HttpOnly, SameSite=Lax, Secure** (in
+  production) cookie named `school_erp_refresh`, path-scoped to
+  `/api/v1/accounts/auth/`. JavaScript can never read it.
+- The refresh token is **rotated on every use** and the previous token is
+  blacklisted; replaying a rotated token fails.
+- The refresh cookie is only accepted on same-origin POST requests whose
+  `Origin` header matches a configured origin; cross-site requests are rejected.
+
+### 5.2 Token-version invalidation
+
+Each access token carries a `token_version` claim. Every credential change
+(password change, password reset, admin reset, deactivation) increments the
+user's `token_version`. The custom authentication class rejects any token whose
+claim does not match the user's current version, so **all outstanding access
+tokens die immediately** (not just at expiry). The same events also blacklist
+every live refresh token.
+
+### 5.3 Forced password change
+
+Admin-created accounts receive a generated temporary password and
+`must_change_password=True`. `MustChangePasswordJWTAuthentication` lets the user
+call only `/me/`, `/change-password/`, `/logout/` and `/refresh/`; every other
+endpoint returns `403` until the password is changed — enforced server-side for
+direct API clients, not just in the UI.
+
+### 5.4 Endpoints
+
+```
+POST /api/v1/accounts/auth/login/          → access token + user (sets refresh cookie)
+POST /api/v1/accounts/auth/refresh/        → new access token (rotates refresh cookie)
+POST /api/v1/accounts/auth/logout/         → blacklists refresh token, clears cookie
+POST /api/v1/accounts/auth/change-password/
+GET/PATCH /api/v1/accounts/auth/me/
+POST /api/v1/accounts/auth/password-reset/
+POST /api/v1/accounts/auth/password-reset/confirm/
+GET  /api/v1/accounts/auth/me/login-history/
 ```
 
+Login returns a generic `Invalid email or password.` for unknown accounts,
+wrong passwords and locked accounts alike, so the API cannot be used to
+enumerate users. Login is throttled at `10/min`; after 5 failures within 15
+minutes the account locks.
+
 ---
 
-## Management Commands
+## 6. Security model
 
-### Create Initial Roles
-```bash
-python manage.py create_initial_roles
+### 6.1 Request hardening
+
+- **CSP** and security headers set by `config/middleware.py`
+  (`X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`,
+  `Permissions-Policy`, and a strict Content-Security-Policy).
+- **CORS** restricted to configured origins.
+- **Throttling** on anon, login, password-reset and sensitive (change-password)
+  endpoints.
+- **Protected foreign keys** (`PROTECT`) and **soft deletes** (`is_active`)
+  preserve referential integrity and data history.
+
+### 6.2 Password policy
+
+`AUTH_PASSWORD_VALIDATORS` enforces minimum length (10), similarity to the user,
+a common-password blocklist, no numeric-only passwords, and a custom complexity
+rule (upper, lower, digit and symbol required).
+
+### 6.3 Upload hardening
+
+Avatar uploads are validated with Pillow (real image decode), restricted to
+jpg/jpeg/png/webp, capped at 2 MB, and stored under a random path so the
+original filename is never used.
+
+### 6.4 Production safety
+
+`config.settings.production` refuses to boot when any of these are unsafe:
+
+- missing or `< 50`-char `SECRET_KEY`,
+- empty or `*` `ALLOWED_HOSTS`,
+- a non-`https://` `FRONTEND_URL`, CORS or CSRF origin,
+- `AUTH_COOKIE_SECURE=False`,
+- SQLite is used (warning; PostgreSQL strongly recommended).
+
+Production also enables `SECURE_SSL_REDIRECT`, HSTS, secure session/CSRF cookies
+and the admin-only schema (`/api/schema/` is disabled for non-staff).
+
+### 6.5 Frontend
+
+The React app uses a small `fetch` wrapper (`lib/api.js`) with **single-flight
+refresh**: when an API call returns `401`, the app calls `/refresh/` once,
+stores the new access token in memory and retries the original request. If the
+refresh fails it dispatches a `school-erp:session-expired` event, clears state
+and redirects to login. Nothing sensitive is stored in browser storage.
+
+---
+
+## 7. API conventions
+
+- Base path `/api/v1/`, JSON, versioned.
+- **UUID** lookup for every resource (`{uuid}` path params, `SlugRelatedField`
+  with `slug_field="uuid"` for relations) — never integer PKs.
+- **Pagination** envelope:
+
+  ```json
+  { "count": 24, "next": null, "previous": null,
+    "page": 1, "page_size": 20, "total_pages": 2, "results": [ ... ] }
+  ```
+
+- **Errors**: `{"detail": "...", "errors": ["field: message"]}` with a
+  consistent DRF exception handler.
+- **Filtering**: `django-filter` `FilterSet`s (status, class, section, year,
+  date ranges, published, etc.).
+- **Custom actions** for complex flows (bulk attendance, invoice generate,
+  record payment, publish exam, report card, summary, today, my-children, etc.).
+- OpenAPI schema at `/api/schema/`, Swagger UI at `/api/docs/`.
+
+---
+
+## 8. Frontend architecture
+
+```
+frontend/src/
+├── App.jsx               # route table + RequireAuth / RequireRole guards
+├── main.jsx              # providers (Auth, Toast), router
+├── context/
+│   ├── AuthContext.jsx   # holds current user, login/logout, token lifecycle
+│   └── ToastContext.jsx  # user feedback toasts
+├── lib/
+│   ├── api.js            # fetch wrapper, in-memory access token, single-flight refresh
+│   ├── constants.js      # labels/options for statuses, grades, audiences
+│   ├── format.js         # currency, dates, numbers, initials
+│   ├── hooks.js          # reusable data-fetching hooks
+│   └── theme.js          # light/dark theme
+├── components/
+│   ├── Layout.jsx        # sidebar + topbar shell
+│   ├── ui.jsx            # buttons, cards, inputs, tables, badges, modals
+│   └── charts.jsx        # custom SVG charts (line, donut, bars)
+└── pages/                # 22 route screens
 ```
 
-Creates system roles and their associated permissions:
-- Admin (all permissions)
-- Teacher (course + grade permissions)
-- Student (view permissions)
-- Parent (view grade permissions)
+- **Routing**: `react-router-dom` v6 with nested routes and role guards. A user
+  hitting a route outside their role sees a friendly "no access" screen.
+- **State**: React context for auth/toasts; local state + hooks for data.
+- **Styling**: plain CSS design system (`styles.css`) with CSS variables, a
+  responsive sidebar, cards, tables, badges, modals and toasts.
+- **Charts**: dependency-free custom SVG charts to keep the bundle small.
+- **Theme**: light/dark via `data-theme`.
 
 ---
 
-## Dependencies
+## 9. Data flow (example — attendance)
 
-### Core
-- `Django 6.0.6` - Web framework
-- `djangorestframework 3.14.0` - REST API framework
+1. Teacher opens Attendance → the page loads their sections from
+   `GET /academics/sections/my-classes/`.
+2. Selecting a section loads the register from `GET /attendance/sheet/?section=...&date=...`.
+3. Marking saves via `POST /attendance/bulk/` with
+   `{section, date, records:[{student, status}]}`.
+4. The server validates the teacher owns the section, rejects future dates and
+   students from other sections, then bulk-creates/updates records
+   transactionally.
+5. Summaries come from `GET /attendance/summary/` and `GET /attendance/today/`.
 
-### Authentication
-- `django-rest-framework-simplejwt 5.3.2` - JWT tokens
-- `PyJWT 2.8.1` - JWT library
-
-### Utilities
-- `python-decouple 3.8` - Environment variables
-- `django-cors-headers 4.3.0` - CORS support
-- `Pillow 10.1.0` - Image processing
-
-### Testing
-- `pytest 7.4.3` - Testing framework
-- `pytest-django 4.7.0` - Django testing
-
-### Optional
-- `psycopg2-binary 2.9.9` - PostgreSQL driver
-- `celery 5.3.4` - Task queue
-- `redis 5.0.1` - Cache/message broker
+Every step is permission- and scope-checked server-side; the UI is a thin layer
+over the same API.
 
 ---
 
-## Performance Considerations
+## 10. Related documents
 
-### Database Optimization
-- Indexed frequently queried fields
-- Foreign key relationships optimized
-- Unique constraints on role/permission codes
-
-### Query Optimization
-- Use `select_related()` for FK lookups
-- Use `prefetch_related()` for reverse lookups
-- Pagination enabled (20 items per page)
-
-### Caching
-- Can integrate Redis for token blacklisting
-- Cache user permissions after first load
-- Cache role information
-
----
-
-## Testing Strategy
-
-### Unit Tests
-- Model validation
-- Serializer validation
-- Permission checking
-
-### Integration Tests
-- API endpoint testing
-- Authentication flow
-- RBAC functionality
-
-### Coverage
-- Aim for 80%+ code coverage
-- Critical paths fully tested
-
----
-
-## Deployment Checklist
-
-- [ ] Set DEBUG=False in production
-- [ ] Generate strong SECRET_KEY
-- [ ] Use PostgreSQL for production
-- [ ] Enable HTTPS
-- [ ] Configure proper CORS origins
-- [ ] Setup email service for password reset
-- [ ] Enable rate limiting
-- [ ] Setup monitoring and logging
-- [ ] Create database backups
-- [ ] Use environment-specific settings
-- [ ] Enable CSRF protection
-- [ ] Configure security headers
-
----
-
-## Future Enhancements
-
-1. **Student Module**
-   - Student enrollment
-   - Attendance tracking
-   - Class assignments
-
-2. **Course Module**
-   - Course creation and management
-   - Curriculum planning
-   - Schedule management
-
-3. **Academic Module**
-   - Grade management
-   - Assessment tools
-   - Report generation
-
-4. **Finance Module**
-   - Fee management
-   - Payment tracking
-   - Financial reports
-
-5. **Communication**
-   - Email notifications
-   - SMS alerts
-   - In-app messaging
-
-6. **Advanced Features**
-   - GraphQL API
-   - Real-time updates (WebSockets)
-   - Mobile app support
-   - Advanced reporting
-
----
-
-## Troubleshooting
-
-### Common Issues
-
-**Issue: URL namespace not unique**
-- Solution: Check for duplicate URL includes in main urls.py
-
-**Issue: Duplicate app in INSTALLED_APPS**
-- Solution: Ensure each app listed only once in settings
-
-**Issue: Migration conflicts**
-- Solution: Delete conflicting migrations and rerun
-
-**Issue: CORS errors**
-- Solution: Add frontend URL to CORS_ALLOWED_ORIGINS in .env
-
----
-
-## Support & Documentation
-
-- Django: https://docs.djangoproject.com/
-- DRF: https://www.django-rest-framework.org/
-- JWT: https://django-rest-framework-simplejwt.readthedocs.io/
-- API Documentation: See `API_DOCUMENTATION.md`
+- **[README.md](README.md)** — overview and quick start
+- **[SETUP_GUIDE.md](SETUP_GUIDE.md)** — environment and deployment
+- **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)** — endpoint reference

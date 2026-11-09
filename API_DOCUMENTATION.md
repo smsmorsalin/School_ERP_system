@@ -1,535 +1,435 @@
-# School ERP Backend API Documentation
+# API Documentation — School ERP
 
-## Overview
+Base URL: `/api/v1/`
 
-This is the API documentation for the School ERP backend built with Django REST Framework and JWT authentication.
-
-## Base URL
-
-```
-http://localhost:8000/api/v1/
-```
-
----
-
-## Authentication Endpoints
-
-### 1. User Registration
-
-**Endpoint:** `POST /accounts/auth/register/`
-
-**Description:** Register a new user account
-
-**Request Body:**
-```json
-{
-  "email": "user@example.com",
-  "first_name": "John",
-  "last_name": "Doe",
-  "password": "securepassword123",
-  "password_confirm": "securepassword123",
-  "phone_number": "1234567890"
-}
-```
-
-**Response:** `201 Created`
-```json
-{
-  "message": "User registered successfully.",
-  "user": {
-    "uuid": "550e8400-e29b-41d4-a716-446655440000",
-    "email": "user@example.com",
-    "first_name": "John",
-    "last_name": "Doe",
-    "full_name": "John Doe",
-    "phone_number": "1234567890",
-    "profile_image": null,
-    "date_of_birth": null,
-    "address": null,
-    "city": null,
-    "state": null,
-    "country": null,
-    "postal_code": null,
-    "is_active": true,
-    "created_at": "2024-01-15T10:30:00Z",
-    "updated_at": "2024-01-15T10:30:00Z"
-  },
-  "tokens": {
-    "refresh": "eyJ0eXAiOiJKV1QiLCJhbGc...",
-    "access": "eyJ0eXAiOiJKV1QiLCJhbGc..."
-  }
-}
-```
+- All endpoints accept and return **JSON** unless noted.
+- Resource lookups use the resource **`uuid`** (hex-with-dashes).
+- Authenticated endpoints require `Authorization: Bearer <access_token>`.
+- The access token (15-minute expiry) is issued by `/login/`; refresh token
+  lives in the HttpOnly cookie `school_erp_refresh`.
+- OpenAPI schema: `/api/schema/` · Swagger UI: `/api/docs/` (admin/staff in
+  production).
 
 ---
 
-### 2. User Login
+## Pagination
 
-**Endpoint:** `POST /accounts/auth/login/`
+List endpoints return:
 
-**Description:** Authenticate user and get JWT tokens
-
-**Request Body:**
 ```json
 {
-  "username": "user@example.com",
-  "password": "securepassword123"
-}
-```
-
-**Note:** The `username` field accepts the user's email address.
-
-**Response:** `200 OK`
-```json
-{
-  "message": "Login successful.",
-  "user": {
-    "uuid": "550e8400-e29b-41d4-a716-446655440000",
-    "email": "user@example.com",
-    "first_name": "John",
-    "last_name": "Doe",
-    "full_name": "John Doe",
-    "is_active": true,
-    "created_at": "2024-01-15T10:30:00Z"
-  },
-  "tokens": {
-    "refresh": "eyJ0eXAiOiJKV1QiLCJhbGc...",
-    "access": "eyJ0eXAiOiJKV1QiLCJhbGc..."
-  }
-}
-```
-
----
-
-### 3. Logout
-
-**Endpoint:** `POST /accounts/auth/logout/`
-
-**Description:** Logout the authenticated user
-
-**Headers:**
-```
-Authorization: Bearer <access_token>
-```
-
-**Response:** `200 OK`
-```json
-{
-  "message": "Logout successful."
-}
-```
-
----
-
-### 4. Refresh Token
-
-**Endpoint:** `POST /accounts/auth/token/refresh/`
-
-**Description:** Get a new access token using refresh token
-
-**Request Body:**
-```json
-{
-  "refresh": "eyJ0eXAiOiJKV1QiLCJhbGc..."
-}
-```
-
-**Response:** `200 OK`
-```json
-{
-  "access": "eyJ0eXAiOiJKV1QiLCJhbGc...",
-  "refresh": "eyJ0eXAiOiJKV1QiLCJhbGc..."
-}
-```
-
----
-
-### 5. Change Password
-
-**Endpoint:** `POST /accounts/auth/change-password/`
-
-**Description:** Change the authenticated user's password
-
-**Headers:**
-```
-Authorization: Bearer <access_token>
-```
-
-**Request Body:**
-```json
-{
-  "old_password": "oldpassword123",
-  "new_password": "newpassword123",
-  "new_password_confirm": "newpassword123"
-}
-```
-
-**Response:** `200 OK`
-```json
-{
-  "message": "Password changed successfully."
-}
-```
-
----
-
-### 6. Get Current User
-
-**Endpoint:** `GET /accounts/auth/me/`
-
-**Description:** Get the authenticated user's profile information
-
-**Headers:**
-```
-Authorization: Bearer <access_token>
-```
-
-**Response:** `200 OK`
-```json
-{
-  "uuid": "550e8400-e29b-41d4-a716-446655440000",
-  "email": "user@example.com",
-  "first_name": "John",
-  "last_name": "Doe",
-  "full_name": "John Doe",
-  "phone_number": "1234567890",
-  "profile_image": null,
-  "date_of_birth": null,
-  "address": null,
-  "city": null,
-  "state": null,
-  "country": null,
-  "postal_code": null,
-  "is_active": true,
-  "created_at": "2024-01-15T10:30:00Z",
-  "updated_at": "2024-01-15T10:30:00Z"
-}
-```
-
-**Update Profile:**
-
-**Endpoint:** `PATCH /accounts/auth/me/`
-
-**Headers:**
-```
-Authorization: Bearer <access_token>
-```
-
-**Request Body:**
-```json
-{
-  "first_name": "John",
-  "last_name": "Smith",
-  "phone_number": "9876543210",
-  "city": "Dhaka",
-  "country": "Bangladesh"
-}
-```
-
-**Response:** `200 OK`
-```json
-{
-  "message": "Profile updated successfully.",
-  "user": { ... }
-}
-```
-
----
-
-## User Management Endpoints
-
-### 7. List All Users
-
-**Endpoint:** `GET /accounts/users/`
-
-**Description:** List all active users (Admin only)
-
-**Headers:**
-```
-Authorization: Bearer <access_token>
-```
-
-**Query Parameters:**
-- `search`: Search by email or name
-- `page`: Page number (pagination)
-
-**Response:** `200 OK`
-```json
-{
-  "count": 10,
-  "next": "http://localhost:8000/api/v1/accounts/users/?page=2",
+  "count": 24,
+  "next": "http://.../page=2",
   "previous": null,
-  "results": [
-    { ... user objects ... }
+  "page": 1,
+  "page_size": 20,
+  "total_pages": 2,
+  "results": [ ... ]
+}
+```
+
+## Error format
+
+```json
+{
+  "detail": "Optional overview message.",
+  "errors": ["field: message", "other: message"]
+}
+```
+
+| Status | Meaning                                            |
+|--------|----------------------------------------------------|
+| 400    | Validation error (field details in `errors`)        |
+| 401    | Missing/expired/invalidated token — sign in again  |
+| 403    | Authenticated but not allowed (role or scope)      |
+| 404    | Not found *or not visible to you* (no enumeration) |
+| 429    | Throttled (login/password-reset/sensitive limits)  |
+
+---
+
+## Authentication
+
+### `POST /accounts/auth/login/`
+
+Public. Body:
+
+```json
+{ "email": "admin@school.example", "password": "Admin@12345" }
+```
+
+Response `200`:
+
+```json
+{
+  "access": "<jwt>",
+  "expires_in": 900,
+  "user": { "uuid": "...", "email": "...", "full_name": "...",
+            "roles": ["Admin"], "primary_role": "Admin",
+            "profile_image_url": null, "must_change_password": false }
+}
+```
+
+Sets the HttpOnly refresh cookie. Unknown email, wrong password and locked
+accounts all return `401 Invalid email or password.` (no enumeration).
+
+Optional header `X-Client-Type: api` returns the refresh token **in the body**
+for native/mobile clients instead of only the cookie.
+
+### `POST /accounts/auth/refresh/`
+
+Browser → `{}`, cookie authenticated. Rotates the refresh cookie (old one is
+blacklisted) and returns `{ "access": "...", "expires_in": 900 }`.
+Rejected (`403`) when the request `Origin` is not a configured origin.
+
+### `POST /accounts/auth/logout/`
+
+Blacklists the current refresh token and clears the cookie.
+Response `204`. If there is no cookie, returns `401`.
+
+### `POST /accounts/auth/change-password/`
+
+Authenticated. Body:
+
+```json
+{
+  "old_password": "current",
+  "new_password": "NewStr0ng!Pass",
+  "new_password_confirm": "NewStr0ng!Pass"
+}
+```
+
+Invalidates all tokens (access + refresh). Users with `must_change_password`
+must change their password before using other endpoints.
+
+### `GET /accounts/auth/me/`
+
+Returns the current user's profile.
+
+### `PATCH /accounts/auth/me/`
+
+Update personal details:
+
+```json
+{
+  "first_name": "Jane",
+  "last_name": "Doe",
+  "phone_number": "+8801...",
+  "address": "123 Main St"
+}
+```
+
+`email`, `roles`, `is_active`, `uuid` and `must_change_password` cannot be
+changed here (admin-only elsewhere).
+
+Optional `profile_image` upload (jpg/jpeg/png/webp, ≤ 2 MB).
+
+### `GET /accounts/auth/me/login-history/`
+
+Recent sign-ins for the current user.
+
+### `POST /accounts/auth/password-reset/`
+
+Body `{ "email": "..." }`. Always returns `200` with a generic message whether or
+not the account exists. Sends a reset link by email.
+
+### `POST /accounts/auth/password-reset/confirm/`
+
+```json
+{
+  "uid": "<urlsafe-base64 user pk>",
+  "token": "<reset token>",
+  "new_password": "NewStr0ng!Pass",
+  "new_password_confirm": "NewStr0ng!Pass"
+}
+```
+
+Sets the new password, clears `must_change_password`, revokes all tokens.
+
+### `POST /accounts/auth/register/`
+
+Public registration. **Disabled by default** (`ALLOW_PUBLIC_REGISTRATION=False`)
+→ returns `403`. When enabled, creates a regular account.
+
+---
+
+## User management (Admin)
+
+### `GET /accounts/users/`
+
+Admin only. Query params include `search`, `is_active`, `role`.
+
+### `POST /accounts/users/`
+
+Admin only. Body:
+
+```json
+{
+  "email": "new.user@school.example",
+  "first_name": "New",
+  "last_name": "User",
+  "roles": ["Student"],
+  "phone_number": "+8801..."
+}
+```
+
+Only superusers may assign the `Admin` role. Creates the account with a
+temporary password and `must_change_password=True`. Response `201` includes
+`temporary_password` (return it to the user; not shown again).
+
+### `GET /accounts/users/{uuid}/` · `PATCH` · `DELETE`
+
+Admin only (GET is allowed for the user's own record). `DELETE` is a soft
+delete (`is_active=False`.
+
+### `POST /accounts/users/{uuid}/set-password/`
+
+Admin sets a new password for a user. Forces `must_change_password=True` and
+revokes all their sessions.
+
+### `POST /accounts/users/{uuid}/toggle-active/`
+
+Activate/deactivate the account. Deactivation revokes all sessions.
+
+### `POST /accounts/users/{uuid}/unlock/`
+
+Clear a lockout (`failed_login_attempts=0`, `locked_until=None`).
+
+### `GET /accounts/users/{uuid}/login-history/`
+
+Admin reads the login history of a given user.
+
+---
+
+## Roles & permissions (Admin)
+
+- `GET /accounts/roles/` · `create` · `GET|PATCH /accounts/roles/{uuid}/` ·
+  `DELETE` (soft delete for regular roles; system roles cannot be deleted).
+- `GET /accounts/permissions/` — the permission catalogue.
+
+Role create/update body:
+
+```json
+{
+  "name": "Librarian",
+  "description": "Library staff",
+  "permission_codes": ["view_student"]
+}
+```
+
+`permission_codes` replace the role's permissions.
+
+---
+
+## Academics
+
+| Endpoint | Notes |
+|---|---|
+| `/academics/academic-years/` | Academic years; `GET /academics/academic-years/current/` returns the current one |
+| `/academics/classes/` | School classes (Grade 1..12) |
+| `/academics/sections/` | Sections; `GET /sections/my-classes/` for teachers; `GET /sections/{uuid}/roster/` for students in the section |
+| `/academics/subjects/` | Subjects (name, code, credits) |
+| `/academics/class-subjects/` | Class-subject-teacher assignments |
+| `/academics/students/` | Students; `GET /academics/students/me/`; `GET /academics/students/my-children/` (parent); `GET /academics/students/{uuid}/guardians/` |
+| `/academics/teachers/` | Teachers; `GET /academics/teachers/me/` |
+| `/academics/guardian-links/` | Guardian–student links |
+| `/academics/timetable/` | Weekly timetable entries |
+
+Writes to academic records are **admin-only**. Teachers and parents read only
+within their scope.
+
+### Create a student (Admin)
+
+`POST /academics/students/`
+
+```json
+{
+  "user": {
+    "email": "student.new@school.example",
+    "first_name": "Sam",
+    "last_name": "Lee",
+    ...
+  },
+  "current_section": "<section uuid>",
+  "roll_number": 12,
+  "gender": "male",
+  "date_of_birth": "2012-04-05",
+  "admission_date": "2026-01-10"
+}
+```
+
+`student_id` (e.g. `STU-2026-0012`) is generated automatically.
+
+---
+
+## Attendance
+
+| Endpoint | Notes |
+|---|---|
+| `POST /attendance/bulk/` | Bulk mark a section for one date |
+| `GET /attendance/sheet/?section=&date=` | Register for a section on a date |
+| `GET /attendance/summary/?section=&from=&to=` | Section summary/percentages |
+| `GET /attendance/today/` | Today's overview for the user's scope |
+| `GET /my-attendance/` | Attendance history for a student/parent |
+
+### Bulk mark
+
+`POST /attendance/bulk/`
+
+```json
+{
+  "section": "<uuid>",
+  "date": "2026-11-08",
+  "records": [
+    { "student": "<student uuid>", "status": "present" },
+    { "student": "<uuid>", "status": "absent", "remarks": "sick" }
   ]
 }
 ```
 
+`status` ∈ `present | absent | late | excused`. Validation: teacher must own the
+section, date cannot be in the future, students must belong to the section and
+each student appears at most once. Returns
+`{ "created": n, "updated": n }`.
+
 ---
 
-### 8. Get User Details
+## Exams & Results
 
-**Endpoint:** `GET /accounts/users/{uuid}/`
+| Endpoint | Notes |
+|---|---|
+| `/exams/` | Exams; `POST /exams/{uuid}/publish/`, `GET /exams/analytics/` |
+| `/exam-subjects/` | Papers; `POST /exam-subjects/{uuid}/bulk-results/`, `GET /exam-subjects/{uuid}/sheet/` |
+| `/exam-results/` | Results; `GET /exam-results/report-card/?student=` |
 
-**Description:** Get details of a specific user
+### Enter marks (Teacher)
 
-**Headers:**
+`POST /exam-subjects/{uuid}/bulk-results/`
+
+```json
+{ "results": [ { "student": "<uuid>", "marks_obtained": 87 } ] }
 ```
-Authorization: Bearer <access_token>
+
+Teacher must manage that subject; published exams are read-only; marks must be
+`0..max_marks`; students must be in the section.
+
+### Publish an exam (Admin)
+
+`POST /exams/{uuid}/publish/`
+
+```json
+{ "published": true }
 ```
 
-**Response:** `200 OK`
+Results become visible to students/parents only after publishing.
+
+### Report card
+
+`GET /exam-results/report-card/?student=<uuid>`
+
+Returns totals, grade, position/rank and per-subject marks. Students see their
+own report; parents only for linked children.
+
+---
+
+## Finance
+
+| Endpoint | Notes |
+|---|---|
+| `/finance/fee-categories/` | Fee categories (admin/accountant) |
+| `/finance/fee-structures/` | Per-class fee definitions (admin/accountant) |
+| `/finance/invoices/` | Invoices; `POST /invoices/generate/`, `POST /invoices/{uuid}/payments/`, `POST /invoices/{uuid}/cancel/`, `GET /invoices/{uuid}/receipt/` |
+| `/finance/payments/` | Payments; `GET /payments/summary/` |
+
+Teachers get `403` on all finance reads and writes. Students/parents see only
+their own invoices/payments.
+
+### Generate invoices (bulk)
+
+`POST /finance/invoices/generate/`
+
 ```json
 {
-  "uuid": "550e8400-e29b-41d4-a716-446655440000",
-  "email": "user@example.com",
-  "first_name": "John",
-  "last_name": "Doe",
-  "full_name": "John Doe",
-  "phone_number": "1234567890",
-  "is_active": true,
-  "created_at": "2024-01-15T10:30:00Z",
-  "updated_at": "2024-01-15T10:30:00Z"
+  "fee_structure": "<fee structure uuid>",
+  "section": "<uuid>"
 }
 ```
 
----
+Creates an invoice for each student in the section that does not already have
+one for that structure. Returns `{ "created": n, "skipped": n }`.
 
-### 9. Update User
+### Record a payment (Accountant)
 
-**Endpoint:** `PUT /accounts/users/{uuid}/` or `PATCH /accounts/users/{uuid}/`
+`POST /finance/invoices/{uuid}/payments/`
 
-**Description:** Update user details
-
-**Headers:**
-```
-Authorization: Bearer <access_token>
-```
-
-**Request Body:**
 ```json
 {
-  "first_name": "John",
-  "last_name": "Smith",
-  "email": "newemail@example.com",
-  "phone_number": "9876543210"
+  "amount": "200.00",
+  "method": "cash",
+  "reference": "RCPT-1024",
+  "notes": "term 1 part payment"
 }
 ```
 
-**Response:** `200 OK`
-```json
-{ ... updated user object ... }
-```
+Atomic and row-locked: overpayment, re-payment of a cancelled invoice and
+paying beyond the remaining balance are rejected. The invoice's
+`amount_paid`/`status`/`balance` are recalculated; deleting a payment
+recalculates them back.
+
+`method` ∈ `cash | card | bank` (see `finance/models`).
 
 ---
 
-### 10. Delete User (Soft Delete)
+## Communication — Announcements
 
-**Endpoint:** `DELETE /accounts/users/{uuid}/`
+| Endpoint | Notes |
+|---|---|
+| `/announcements/` | List (scoped by audience) + create |
+| `GET /announcements/unread-count/` | Unread count for the current user |
+| `POST /announcements/{uuid}/read/` | Mark one as read |
+| `POST /announcements/mark-all-read/` | Mark all visible as read |
 
-**Description:** Deactivate a user (mark as inactive)
+### Create (Admin/Teacher)
 
-**Headers:**
-```
-Authorization: Bearer <access_token>
-```
+`POST /announcements/`
 
-**Response:** `204 No Content`
 ```json
 {
-  "message": "User deleted successfully."
+  "title": "Parent teacher meeting",
+  "body": "Friday at 10:00.",
+  "audience": "all"
 }
 ```
 
----
-
-## Models Overview
-
-### User Model
-- `uuid` - Unique identifier (UUID)
-- `email` - Email address (unique)
-- `first_name` - First name
-- `last_name` - Last name
-- `phone_number` - Contact number
-- `profile_image` - Profile image
-- `date_of_birth` - Date of birth
-- `address` - Street address
-- `city` - City
-- `state` - State/Province
-- `country` - Country
-- `postal_code` - Postal/ZIP code
-- `is_active` - Active status
-- `created_at` - Creation timestamp
-- `updated_at` - Last update timestamp
-
-### Role Model
-- `uuid` - Unique identifier
-- `name` - Role name (unique)
-- `description` - Role description
-- `is_system_role` - System role indicator
-- `is_active` - Active status
-
-### Permission Model
-- `uuid` - Unique identifier
-- `code` - Permission code (unique)
-- `name` - Permission name
-- `description` - Permission description
-- `category` - Permission category
-- `is_active` - Active status
-
-### UserRole Model
-- Links users to roles (Many-to-Many)
-- Tracks who assigned the role and when
-
-### RolePermission Model
-- Links roles to permissions (Many-to-Many)
-- Tracks which permissions each role has
-
-### LoginHistory Model
-- Tracks all login attempts and sessions
-- Records IP address, device type, and user agent
-- Stores session duration and failure reasons
+`audience` ∈ `all | students | parents | teachers | class`. Teachers may only
+post `students`/audience-of-their-class; students and parents cannot post.
+Expired announcements (`expires_at`) are hidden for non-admins.
 
 ---
 
-## System Roles
+## Dashboard
 
-### Admin
-- Full system access
-- Can manage users, roles, and permissions
-- Can create and manage courses and grades
-
-### Teacher
-- Can view courses
-- Can add and modify grades
-- Limited user management
-
-### Student
-- Read-only access to courses and personal grades
-
-### Parent
-- Read-only access to student grades
+- `GET /dashboard/overview/` — role-aware tiles (students, finance, attendance,
+  recently admitted, upcoming exams, latest announcements).
+- `GET /dashboard/search/?q=` — global search scoped to the user's permissions.
+- `GET /health/` — liveness probe (`{ "status": "ok" }`).
 
 ---
 
-## Error Responses
+## Management commands
 
-### 400 Bad Request
-```json
-{
-  "field_name": ["Error message"]
-}
-```
-
-### 401 Unauthorized
-```json
-{
-  "detail": "Authentication credentials were not provided."
-}
-```
-
-### 403 Forbidden
-```json
-{
-  "detail": "You do not have permission to perform this action."
-}
-```
-
-### 404 Not Found
-```json
-{
-  "detail": "Not found."
-}
-```
-
-### 500 Internal Server Error
-```json
-{
-  "detail": "Internal server error."
-}
-```
+| Command | Purpose |
+|---|---|
+| `python manage.py create_initial_roles` | Seed the 5 system roles + permissions |
+| `python manage.py seed_demo_data` | Seed a demo school, users and data |
 
 ---
 
-## Rate Limiting
+## Demo accounts
 
-Rate limiting is not currently enabled but can be added to settings.
-
----
-
-## CORS
-
-CORS is configured to allow requests from:
-- `http://localhost:3000`
-- `http://localhost:8000`
-
-Add additional origins in `.env` file:
-```
-CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000,https://yourdomain.com
-```
-
----
-
-## Development Setup
-
-### 1. Clone Repository
-```bash
-git clone <repo_url>
-cd SchoolERP/backend
-```
-
-### 2. Create Virtual Environment
-```bash
-python -m venv venv
-source venv/Scripts/activate  # Windows
-```
-
-### 3. Install Dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Setup Environment Variables
-```bash
-cp .env.example .env
-# Edit .env with your settings
-```
-
-### 5. Run Migrations
-```bash
-python manage.py migrate
-python manage.py create_initial_roles
-```
-
-### 6. Create Superuser
-```bash
-python manage.py createsuperuser
-```
-
-### 7. Run Development Server
-```bash
-python manage.py runserver
-```
-
-The API will be available at `http://localhost:8000/api/v1/`
-
----
-
-## Admin Panel
-
-Access Django admin at: `http://localhost:8000/admin/`
-
----
-
-## Future Enhancements
-
-- [ ] Student module (enrollment, attendance, etc.)
-- [ ] Course module (curriculum, schedules)
-- [ ] Grades/Assessment module
-- [ ] Payment/Finance module
-- [ ] Communication/Notification system
-- [ ] Mobile app API endpoints
-- [ ] Advanced reporting and analytics
-- [ ] File upload/document management
-- [ ] Email notifications
-- [ ] SMS alerts
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@school.example` | `Admin@12345` |
+| Teacher | `teacher@school.example` | `Teacher@12345` |
+| Accountant | `accountant@school.example` | `Account@12345` |
+| Student | `student@school.example` | `Student@12345` |
+| Parent | `parent@school.example` | `Parent@12345` |

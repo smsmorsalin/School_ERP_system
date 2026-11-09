@@ -1,426 +1,255 @@
-# School ERP Backend - Setup & Getting Started Guide
+# School ERP — Setup Guide
 
-## ✅ What's Been Fixed & Implemented
-
-### **Phase 1: Configuration & Dependencies** ✅
-- [x] Fixed corrupted `requirements.txt` with proper UTF-8 encoding
-- [x] Created `.env` and `.env.example` for environment variables
-- [x] Configured Django settings with REST Framework, JWT, and CORS
-- [x] Removed duplicate app registration in `INSTALLED_APPS`
-- [x] Setup logging configuration
-
-### **Phase 2: Database Models** ✅
-- [x] Implemented custom `User` model with email authentication
-- [x] Created `Role` model for RBAC
-- [x] Created `Permission` model for fine-grained access control
-- [x] Implemented `UserRole` junction table
-- [x] Implemented `RolePermission` junction table
-- [x] Created `LoginHistory` model for audit trails
-- [x] Setup BaseModel with UUID, soft deletes, and timestamps
-
-### **Phase 3: Authentication** ✅
-- [x] Setup JWT authentication with simple-jwt
-- [x] Implemented user registration endpoint
-- [x] Implemented user login with JWT tokens
-- [x] Created logout endpoint with session tracking
-- [x] Implemented token refresh mechanism
-- [x] Created password change endpoint
-- [x] Implemented current user profile endpoint
-
-### **Phase 4: API Endpoints** ✅
-- [x] Created authentication serializers with validation
-- [x] Implemented auth views (register, login, logout, change password)
-- [x] Created UserViewSet for user management
-- [x] Setup URL routing for API endpoints
-- [x] Configured Django admin for model management
-- [x] Created management command for initial data setup
-
-### **Phase 5: Documentation** ✅
-- [x] Created comprehensive API documentation
-- [x] Created architecture overview document
-- [x] Added inline code documentation
-- [x] Setup logging for debugging
+This guide covers local development, running the test suite, building the
+frontend, and deploying to production.
 
 ---
 
-## 🚀 Quick Start Guide
+## 1. Prerequisites
 
-### 1. **Prerequisites**
-- Python 3.8+
-- pip (Python package manager)
-- Virtual environment
+- **Python** 3.12+ (tested on 3.14)
+- **Node.js** 18+ and **npm** (only needed if you want the Vite dev server or a
+  frontend rebuild)
+- **PostgreSQL** 14+ (recommended for production; SQLite is fine for development)
 
-### 2. **Install Dependencies**
+---
+
+## 2. Backend setup
 
 ```bash
 cd backend
-python -m venv venv
 
-# Activate virtual environment
-# Windows:
-venv\Scripts\activate
-# Mac/Linux:
-source venv/bin/activate
+# Create and activate a virtual environment
+python -m venv .venv
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
 
-# Install packages
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 3. **Setup Environment Variables**
+### Configure the environment
 
 ```bash
-# Copy example file
-copy .env.example .env
-
-# Edit .env with your settings
-# Important: Change SECRET_KEY in production
+cp .env.example .env
 ```
 
-### 4. **Initialize Database**
+Edit `.env`. The most important keys:
 
-```bash
-# Create migrations
-python manage.py makemigrations
+| Variable                  | Development            | Production                              |
+|---------------------------|------------------------|------------------------------------------|
+| `DEBUG`                   | `True`                 | `False`                                  |
+| `SECRET_KEY`              | any value              | `python -c "import secrets; print(secrets.token_urlsafe(64))"` |
+| `ALLOWED_HOSTS`           | `127.0.0.1,localhost`  | your public host(s)                      |
+| `DB_ENGINE`               | `django.db.backends.sqlite3` | `django.db.backends.postgresql`     |
+| `DB_NAME` / `DB_USER` / `DB_PASSWORD` / `DB_HOST` / `DB_PORT` | — | your PostgreSQL details |
+| `FRONTEND_URL`            | `http://localhost:5173`| `https://your-domain`                    |
+| `CORS_ALLOWED_ORIGINS`    | `http://localhost:5173,http://127.0.0.1:5173` | `https://your-domain` |
+| `CSRF_TRUSTED_ORIGINS`    | same as CORS           | `https://your-domain`                    |
+| `AUTH_COOKIE_SECURE`      | `False`                | `True`                                   |
+| `JWT_ACCESS_MINUTES`      | `15`                   | `15`                                     |
+| `JWT_REFRESH_DAYS`        | `1`                    | `1`                                      |
+| `ALLOW_PUBLIC_REGISTRATION` | `False`              | `False`                                  |
+| `TIME_ZONE`               | `Asia/Dhaka`           | `Asia/Dhaka`                             |
+| `EMAIL_BACKEND`           | console                | SMTP settings (see below)                |
 
-# Apply migrations
-python manage.py migrate
+> **Production hard-fail checks** — with `DEBUG=False` the app refuses to start
+> if `SECRET_KEY` is missing/short, `ALLOWED_HOSTS` is empty or `*`, any
+> `FRONTEND_URL`/CORS/CSRF origin is not HTTPS, or `AUTH_COOKIE_SECURE` is not
+> `True`. This makes an insecure deployment fail loudly instead of silently.
 
-# Create initial roles and permissions
-python manage.py create_initial_roles
+### Email (production)
 
-# Create superuser (admin account)
-python manage.py createsuperuser
-```
-
-### 5. **Run Development Server**
-
-```bash
-python manage.py runserver
-```
-
-Server runs at: `http://localhost:8000`
-
----
-
-## 📚 API Endpoints Summary
-
-### Authentication Endpoints
-
-| Method | Endpoint | Purpose | Auth Required |
-|--------|----------|---------|----------------|
-| POST | `/api/v1/accounts/auth/register/` | Register new user | ❌ |
-| POST | `/api/v1/accounts/auth/login/` | Get JWT tokens | ❌ |
-| POST | `/api/v1/accounts/auth/logout/` | Logout user | ✅ |
-| POST | `/api/v1/accounts/auth/token/refresh/` | Refresh access token | ❌ |
-| POST | `/api/v1/accounts/auth/change-password/` | Change password | ✅ |
-| GET | `/api/v1/accounts/auth/me/` | Get current user | ✅ |
-| PATCH | `/api/v1/accounts/auth/me/` | Update profile | ✅ |
-
-### User Management Endpoints
-
-| Method | Endpoint | Purpose | Permission |
-|--------|----------|---------|-----------|
-| GET | `/api/v1/accounts/users/` | List all users | Admin only |
-| POST | `/api/v1/accounts/users/` | Create user | Admin only |
-| GET | `/api/v1/accounts/users/{uuid}/` | Get user details | Authenticated |
-| PUT | `/api/v1/accounts/users/{uuid}/` | Update user | Authenticated |
-| PATCH | `/api/v1/accounts/users/{uuid}/` | Partial update | Authenticated |
-| DELETE | `/api/v1/accounts/users/{uuid}/` | Delete user (soft) | Admin only |
-
----
-
-## 🔐 Authentication Example
-
-### 1. Register New User
-
-```bash
-curl -X POST http://localhost:8000/api/v1/accounts/auth/register/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com",
-    "first_name": "John",
-    "last_name": "Doe",
-    "password": "securepass123",
-    "password_confirm": "securepass123",
-    "phone_number": "1234567890"
-  }'
-```
-
-### 2. Login User
-
-```bash
-curl -X POST http://localhost:8000/api/v1/accounts/auth/login/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "user@example.com",
-    "password": "securepass123"
-  }'
-```
-
-Response includes:
-- `access` token (24 hours)
-- `refresh` token (7 days)
-- User profile data
-
-### 3. Use Access Token
-
-```bash
-curl -X GET http://localhost:8000/api/v1/accounts/auth/me/ \
-  -H "Authorization: Bearer {access_token}"
-```
-
-### 4. Refresh Token
-
-```bash
-curl -X POST http://localhost:8000/api/v1/accounts/auth/token/refresh/ \
-  -H "Content-Type: application/json" \
-  -d '{"refresh": "{refresh_token}"}'
-```
-
----
-
-## 🗄️ Database Models
-
-### User Model
-- Custom user model using email as primary identifier
-- Extends Django's AbstractUser
-- Contains profile information and contact details
-- Soft delete support
-
-**Key Fields:**
-- `uuid` - Public identifier
-- `email` - Unique email address
-- `first_name`, `last_name` - Name fields
-- `phone_number`, `date_of_birth` - Contact info
-- `address`, `city`, `state`, `country`, `postal_code` - Address
-- `profile_image` - Profile picture
-- `is_active` - Soft delete flag
-- `created_at`, `updated_at` - Timestamps
-
-### Role Model
-- User roles: Admin, Teacher, Student, Parent
-- Many-to-many relationship with users via UserRole
-- Many-to-many relationship with permissions via RolePermission
-
-### Permission Model
-- Fine-grained permissions (e.g., `view_user`, `add_course`)
-- Categorized (user_management, academic, etc.)
-- Assigned to roles, not directly to users
-
-### UserRole Model
-- Junction table linking users and roles
-- Tracks who assigned the role and when
-- Supports multiple roles per user
-
-### RolePermission Model
-- Junction table linking roles and permissions
-- Defines which permissions each role has
-
-### LoginHistory Model
-- Audit trail of all login attempts
-- Records IP address, device, and browser info
-- Tracks session duration
-- Records failed login reasons
-- Read-only (cannot be manually created)
-
----
-
-## 👨‍💼 Admin Panel
-
-Access Django admin at: `http://localhost:8000/admin/`
-
-**Features:**
-- User management
-- Role configuration
-- Permission assignment
-- Login history viewing
-- Customized admin interface for all models
-
----
-
-## 🔧 Configuration Files
-
-### settings/base.py
-- Common settings for all environments
-- Database configuration
-- Installed apps
-- Middleware setup
-- REST Framework configuration
-- JWT settings
-- CORS configuration
-- Logging setup
-
-### .env File
 ```ini
-DEBUG=True
-SECRET_KEY=your-secret-key
-ALLOWED_HOSTS=127.0.0.1,localhost
-DB_ENGINE=django.db.backends.sqlite3
-DB_NAME=db.sqlite3
-JWT_ALGORITHM=HS256
-JWT_EXPIRATION_HOURS=24
-CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
-LANGUAGE_CODE=en-us
-TIME_ZONE=Asia/Dhaka
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.example.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=no-reply@your-domain
+EMAIL_HOST_PASSWORD=your-password
+DEFAULT_FROM_EMAIL=School ERP <no-reply@your-domain>
 ```
 
----
+### Initialize the database
 
-## 🛡️ Security Checklist
-
-- [x] Custom user model with email authentication
-- [x] Password hashing with PBKDF2
-- [x] JWT tokens with expiration
-- [x] Token rotation enabled
-- [x] CORS protection configured
-- [x] Login attempt auditing
-- [x] Soft delete for data preservation
-- [x] Environment variables for secrets
-- [ ] HTTPS in production (TODO)
-- [ ] Rate limiting (optional)
-- [ ] Email verification (future)
-- [ ] Two-factor authentication (future)
-
----
-
-## 📝 Project Structure
-
-```
-backend/
-├── apps/
-│   ├── accounts/           # User & auth management
-│   │   ├── models/         # Database models
-│   │   ├── api/            # API views
-│   │   ├── serializers/    # Data validation
-│   │   ├── admin.py        # Admin configuration
-│   │   ├── urls.py         # URL routing
-│   │   └── management/     # Custom commands
-│   └── core/               # Core utilities
-│       └── models/
-│           └── base_model.py
-├── config/
-│   ├── settings/           # Django settings
-│   ├── urls.py             # Main URL routing
-│   ├── wsgi.py
-│   └── asgi.py
-├── logs/                   # Application logs
-├── media/                  # User uploads
-├── static/                 # Static files
-├── manage.py
-├── requirements.txt
-└── .env                    # Environment variables
-```
-
----
-
-## 🧪 Testing & Development
-
-### Run Tests
 ```bash
-pytest                      # Run all tests
-pytest apps/accounts/       # Run specific app tests
-pytest --cov                # With coverage report
+python manage.py migrate
+python manage.py create_initial_roles   # seeds the 5 system roles + permissions
+python manage.py seed_demo_data         # optional: demo school + demo accounts
 ```
 
-### Make Migrations
-```bash
-python manage.py makemigrations    # Create migration files
-python manage.py migrate           # Apply migrations
-```
+To create a real administrator instead of (or in addition to) the demo data:
 
-### Create Superuser
 ```bash
 python manage.py createsuperuser
 ```
 
-### Initialize Sample Data
+> The demo `admin@school.example` is **not** a Django superuser; it has the
+> `Admin` role. Use `createsuperuser` if you want Django-admin access with a
+> separate account, or promote a user in the Users screen.
+
+### Run the development server
+
 ```bash
-python manage.py create_initial_roles
+python manage.py runserver 0.0.0.0:8000
 ```
+
+- SPA: `http://localhost:8000/`
+- API: `http://localhost:8000/api/v1/`
+- API schema: `http://localhost:8000/api/schema/`
+- Swagger UI: `http://localhost:8000/api/docs/`
+- Django admin: `http://localhost:8000/admin/`
 
 ---
 
-## 🐛 Troubleshooting
+## 3. Frontend
 
-### Issue: "Address already in use"
+The SPA in `frontend/dist/` is already built and served by Django. To develop
+the UI with hot reload:
+
 ```bash
-# Find and kill process on port 8000
-# Windows:
-netstat -ano | findstr :8000
-taskkill /PID <PID> /F
-
-# Mac/Linux:
-lsof -ti:8000 | xargs kill -9
+cd frontend
+npm install
+npm run dev          # Vite dev server on http://localhost:5173
 ```
 
-### Issue: "No module named 'django'"
+To rebuild the production bundle (served by Django at `/`):
+
 ```bash
-# Ensure virtual environment is activated
-pip install -r requirements.txt
+npm run build
 ```
 
-### Issue: "ModuleNotFoundError: No module named 'rest_framework'"
+### Demo accounts
+
+| Role        | Email                      | Password       |
+|-------------|----------------------------|----------------|
+| Admin       | `admin@school.example`     | `Admin@12345`  |
+| Teacher     | `teacher@school.example`   | `Teacher@12345`|
+| Accountant  | `accountant@school.example`| `Account@12345`|
+| Student     | `student@school.example`   | `Student@12345`|
+| Parent      | `parent@school.example`    | `Parent@12345` |
+
+---
+
+## 4. Tests
+
 ```bash
-pip install djangorestframework django-rest-framework-simplejwt
+cd backend
+.venv/bin/python -m pytest          # 70 tests
+.venv/bin/python -m pytest -v       # verbose
+.venv/bin/python -m pytest tests/test_auth.py   # one file
 ```
 
-### Issue: Database locked
+Tests use a disposable SQLite database and never touch your real data. Password
+hashing and throttle rates are relaxed in tests; everything security-relevant is
+left intact.
+
+---
+
+## 5. Production deployment
+
+### 5.1 Database
+
+Switch to PostgreSQL in `.env` (see the table above), then:
+
 ```bash
-# Reset database (development only)
+python manage.py migrate
+```
+
+### 5.2 Static files & media
+
+```bash
+python manage.py collectstatic --noinput   # serves via whitenoise
+mkdir -p media                              # user uploads (avatars)
+```
+
+### 5.3 Run with Gunicorn
+
+```bash
+export DJANGO_SETTINGS_MODULE=config.settings.production
+gunicorn config.wsgi:application \
+  --bind 0.0.0.0:8000 \
+  --workers 4 \
+  --timeout 60 \
+  --access-logfile - --error-logfile -
+```
+
+`config.settings.production` enables HTTPS redirects, HSTS, secure cookies and
+the security headers.
+
+### 5.4 Reverse proxy (nginx)
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name your-domain;
+
+    ssl_certificate     /etc/letsencrypt/live/your-domain/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/your-domain/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+server {
+    listen 80;
+    server_name your-domain;
+    return 301 https://$host$request_uri;
+}
+```
+
+> The production settings read `HTTP_X_FORWARDED_PROTO` for the SSL redirect, so
+> nginx must forward `X-Forwarded-Proto` (shown above). Set
+> `USE_X_FORWARDED_FOR=True` in `.env` only when a trusted proxy sets
+> `X-Forwarded-For` for real client IPs.
+
+---
+
+## 6. Troubleshooting
+
+**Port already in use**
+
+```bash
+fuser -k 8000/tcp      # Linux
+lsof -ti:8000 | xargs kill -9   # macOS
+```
+
+**Django refuses to start in production**
+
+The server prints a clear `ImproperlyConfigured` message. The most common causes
+are a weak `SECRET_KEY`, an empty/wildcard `ALLOWED_HOSTS`, a non-HTTPS
+`FRONTEND_URL`/CORS/CSRF origin, or `AUTH_COOKIE_SECURE=False`.
+
+**Login always fails / account locked**
+
+Five failed attempts in 15 minutes locks an account. Use the **Unlock** action on
+the user in the Users screen (admin), or wait for the lockout to expire. A locked
+account returns a generic error for both correct and incorrect passwords.
+
+**I forgot the admin password**
+
+```bash
+python manage.py shell -c "from apps.accounts.models import User; u=User.objects.get(email='admin@school.example'); u.set_password('NewPass@12345'); u.token_version+=1; u.must_change_password=False; u.save()"
+```
+
+**Database reset (development only)**
+
+```bash
 rm db.sqlite3
 python manage.py migrate
 python manage.py create_initial_roles
+python manage.py seed_demo_data
 ```
 
 ---
 
-## 📞 Support & Resources
+## 7. Related documentation
 
-- **Django Documentation**: https://docs.djangoproject.com/
-- **DRF Documentation**: https://www.django-rest-framework.org/
-- **JWT Documentation**: https://django-rest-framework-simplejwt.readthedocs.io/
-- **API Documentation**: See `API_DOCUMENTATION.md`
-- **Architecture Guide**: See `ARCHITECTURE.md`
-
----
-
-## 🔄 Next Steps
-
-1. **Test the API**
-   - Use Postman or cURL to test endpoints
-   - Verify authentication flow
-   - Test user management
-
-2. **Create Frontend**
-   - Build React/Vue frontend
-   - Integrate with API
-   - Handle authentication
-
-3. **Expand Backend**
-   - Add Student module
-   - Add Course module
-   - Add Grade management
-   - Add Finance module
-
-4. **Deploy**
-   - Switch to PostgreSQL
-   - Setup production server
-   - Configure domain and SSL
-   - Setup CI/CD pipeline
-
----
-
-## 📄 Documentation Files
-
-- **API_DOCUMENTATION.md** - Complete API reference
-- **ARCHITECTURE.md** - System architecture overview
-- **SETUP_GUIDE.md** - This file
-
----
-
-**Status:** ✅ Backend architecture fully implemented and ready for development!
-
-**Last Updated:** January 2024
-**Framework:** Django 6.0.6 + Django REST Framework 3.14.0
-**Authentication:** JWT with Simple JWT
-**Database:** SQLite (development), PostgreSQL (production)
+- **[README.md](README.md)** — project overview and feature list
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** — design, apps, RBAC and security model
+- **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)** — full endpoint reference
+- `frontend/README.md` — frontend conventions

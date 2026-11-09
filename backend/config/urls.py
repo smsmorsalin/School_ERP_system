@@ -1,34 +1,67 @@
-"""
-URL configuration for config project.
+"""Project URL configuration."""
 
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/6.0/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
-from django.contrib import admin
-from django.urls import path, include
+import re
+
 from django.conf import settings
-from django.conf.urls.static import static
+from django.contrib import admin
+from django.urls import include, path, re_path
+from django.views.static import serve as static_serve
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from rest_framework.permissions import AllowAny
+
+from apps.core.permissions import IsAdmin
+
+admin.site.site_header = "School ERP Administration"
+admin.site.site_title = "School ERP Admin"
+admin.site.index_title = "School management"
+
+
+class SchemaView(SpectacularAPIView):
+    """API schema is public in DEBUG, admin-only in production."""
+
+    def get_permissions(self):
+        return [AllowAny()] if settings.DEBUG else [IsAdmin()]
+
+
+class SwaggerView(SpectacularSwaggerView):
+    def get_permissions(self):
+        return [AllowAny()] if settings.DEBUG else [IsAdmin()]
+
 
 urlpatterns = [
-    # Django admin
-    path('admin/', admin.site.urls),
-    
-    # API v1 endpoints
-    path('api/v1/', include('apps.accounts.urls')),
+    path("admin/", admin.site.urls),
+    path("api/schema/", SchemaView.as_view(), name="schema"),
+    path("api/docs/", SwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+    path("api/v1/", include("apps.accounts.urls")),
+    path("api/v1/", include("apps.academics.urls")),
+    path("api/v1/", include("apps.attendance.urls")),
+    path("api/v1/", include("apps.exams.urls")),
+    path("api/v1/", include("apps.finance.urls")),
+    path("api/v1/", include("apps.communication.urls")),
+    path("api/v1/", include("apps.dashboard.urls")),
 ]
 
-# Serve media files in development
+# Media files are served by Django only in development. In production put
+# nginx (or an object store) in front of MEDIA_ROOT.
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    urlpatterns += [
+        re_path(
+            r"^media/(?P<path>.*)$",
+            static_serve,
+            {"document_root": settings.MEDIA_ROOT},
+        )
+    ]
 
+# Single-page frontend. WhiteNoise serves hashed assets; any non-API route
+# falls back to index.html so client-side routing works.
+if settings.FRONTEND_DIST.exists():
+    from apps.core.spa import SpaView
+
+    urlpatterns += [
+        re_path(
+            r"^assets/(?P<path>.*)$",
+            static_serve,
+            {"document_root": settings.FRONTEND_DIST / "assets"},
+        ),
+        re_path(r"^(?!api/|admin/|static/|media/).*$", SpaView.as_view(), name="spa"),
+    ]

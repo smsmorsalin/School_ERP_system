@@ -1,25 +1,29 @@
-"""
-Accounts API
-==========================================================
-API views and endpoints for accounts app.
-"""
-
 from .auth_views import (
-    RegisterView,
-    LoginView,
-    LogoutView,
     ChangePasswordView,
     CurrentUserView,
-    CustomTokenObtainPairView,
+    LoginView,
+    LogoutView,
+    MyLoginHistoryView,
+    PasswordResetConfirmView,
+    PasswordResetRequestView,
+    RefreshView,
+    RegisterView,
 )
-from .user_views import UserViewSet
+from .role_views import PermissionViewSet, RoleViewSet
+from .user_views import LoginHistoryViewSet, UserViewSet
 
 __all__ = [
-    'RegisterView',
-    'LoginView',
-    'LogoutView',
-    'ChangePasswordView',
-    'CurrentUserView',
-    'CustomTokenObtainPairView',
-    'UserViewSet',
+    "ChangePasswordView",
+    "CurrentUserView",
+    "LoginView",
+    "LogoutView",
+    "MyLoginHistoryView",
+    "PasswordResetConfirmView",
+    "PasswordResetRequestView",
+    "RefreshView",
+    "RegisterView",
+    "PermissionViewSet",
+    "RoleViewSet",
+    "LoginHistoryViewSet",
+    "UserViewSet",
 ]

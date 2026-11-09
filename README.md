@@ -1,342 +1,213 @@
 # School ERP System
 
-A comprehensive School Enterprise Resource Planning (ERP) system built with Django and React to manage all aspects of school administration.
+A complete, security-hardened School Enterprise Resource Planning system with a
+Django REST backend and a modern React single-page console.
 
-## 📋 Project Overview
+The system connects admissions, academics, attendance, examinations, finance and
+communication so your team spends less time on administration and more time on
+students.
 
-School ERP is a full-stack web application designed to streamline school management operations including:
-- User and role management
-- Academic tracking
-- Grade management
-- Finance and payments
-- Student enrollment
-- Communication and notifications
+> **Resuming development (AI agents / contributors):** read
+> [`AI_HANDOFF.md`](AI_HANDOFF.md) first. It tracks what is finished, what is
+> verified, what remains, how to run everything, and the project's security rules.
 
-## 🏗️ Architecture
+---
 
-### Backend
-- **Framework**: Django 6.0.6
-- **API**: Django REST Framework
-- **Authentication**: JWT (Simple JWT)
-- **Database**: SQLite (dev) / PostgreSQL (prod)
-- **Language**: Python 3.8+
+## ✨ Features
 
-### Frontend (Planned)
-- **Framework**: React/Vue
-- **State Management**: Redux/Pinia
-- **Styling**: TailwindCSS/Bootstrap
-- **Language**: TypeScript/JavaScript
+- **Role-based access** — five built-in roles (`Admin`, `Teacher`, `Accountant`,
+  `Student`, `Parent`) with row-level data scoping so every user only ever sees
+  the records they are allowed to see.
+- **Student & academic management** — classes, sections, subjects, class-subject
+  assignments, teacher/student/guardian profiles and a weekly timetable.
+- **Attendance** — daily register, bulk marking, per-student history and
+  class/section summaries.
+- **Examinations** — exam and paper setup, mark entry, publishing, grade bands,
+  report cards with rank, and analytics.
+- **Finance** — fee categories and structures, bulk invoice generation, partial
+  payments, receipts, and collection summaries.
+- **Communication** — role/class-targeted announcements with read receipts.
+- **Dashboard** — role-aware overview with charts and a global search.
+- **Security** — see [Security](#-security) below.
+
+## 🧱 Tech Stack
+
+| Layer     | Technology                                                                 |
+|-----------|----------------------------------------------------------------------------|
+| Backend   | Django 6.0.6, Django REST Framework 3.16.1, SimpleJWT 5.5.1                 |
+| Backend   | django-filter 25.1, drf-spectacular 0.28.0, django-cors-headers 4.7.0       |
+| Backend   | Pillow 11.3.0 (image validation), whitenoise 6.9.0, gunicorn 23.0.0         |
+| Database  | SQLite (development), PostgreSQL (production) via `psycopg` 3.2.9           |
+| Frontend  | React 18.3.1, react-router-dom 6.26.2, lucide-react 0.451.0                 |
+| Frontend  | Vite 5.4.8, plain CSS (custom design system)                                |
+| Testing   | pytest 8.4.2, pytest-django 4.11.1 (70 tests)                               |
 
 ## 📁 Project Structure
 
 ```
-SchoolERP/
-├── backend/                    # Django backend API
+School_ERP_system/
+├── backend/
+│   ├── config/                 # Django settings (base / development / production)
 │   ├── apps/
-│   │   ├── accounts/          # User & auth
-│   │   └── core/              # Core utilities
-│   ├── config/                # Django settings
+│   │   ├── accounts/           # Custom user, RBAC, JWT auth, login history
+│   │   ├── academics/          # Classes, sections, subjects, profiles, timetable
+│   │   ├── attendance/         # Daily attendance, bulk marking, summaries
+│   │   ├── exams/              # Exams, papers, results, report cards, analytics
+│   │   ├── finance/            # Fee structures, invoices, payments, receipts
+│   │   ├── communication/      # Targeted announcements and read receipts
+│   │   ├── dashboard/          # Role-aware overview and global search
+│   │   └── core/               # Base models, RBAC, pagination, middleware, SPA
+│   ├── tests/                  # pytest suite (70 tests)
 │   ├── manage.py
-│   └── requirements.txt
-├── frontend/                  # React/Vue frontend (WIP)
-├── docs/                      # Documentation
-├── API_DOCUMENTATION.md       # API reference
-├── ARCHITECTURE.md            # System architecture
-├── SETUP_GUIDE.md             # Setup instructions
-└── README.md                  # This file
+│   ├── requirements.txt
+│   └── .env.example
+├── frontend/
+│   ├── src/
+│   │   ├── pages/              # 22 route screens
+│   │   ├── components/         # Layout, charts, UI primitives
+│   │   ├── context/            # Auth + toast providers
+│   │   ├── lib/                # API client, formatting, theme, hooks
+│   │   └── App.jsx             # Routes, guards
+│   ├── package.json
+│   └── vite.config.js
+├── docs/                       # Supporting documentation
+├── README.md                   # This file
+├── ARCHITECTURE.md
+├── SETUP_GUIDE.md
+└── API_DOCUMENTATION.md
 ```
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Development)
 
-### Backend Setup
+### 1. Backend
 
-1. **Navigate to backend**
-   ```bash
-   cd backend
-   ```
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 
-2. **Create virtual environment**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # Windows: venv\Scripts\activate
-   ```
+cp .env.example .env           # then edit .env (see SETUP_GUIDE.md)
+python manage.py migrate
+python manage.py create_initial_roles
+python manage.py seed_demo_data
 
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+python manage.py runserver 0.0.0.0:8000
+```
 
-4. **Setup environment**
-   ```bash
-   copy .env.example .env
-   # Edit .env with your settings
-   ```
+The API is served at `http://localhost:8000/api/v1/`, the SPA at
+`http://localhost:8000/`, and OpenAPI docs at `http://localhost:8000/api/docs/`.
 
-5. **Initialize database**
-   ```bash
-   python manage.py migrate
-   python manage.py create_initial_roles
-   python manage.py createsuperuser
-   ```
+### 2. Frontend (optional — for hot-reload development)
 
-6. **Run development server**
-   ```bash
-   python manage.py runserver
-   ```
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-Backend available at: `http://localhost:8000`
+Vite serves the SPA on `http://localhost:5173`. The production build lives in
+`frontend/dist/` and is already served by Django, so the dev server is only
+needed while working on the UI.
 
----
+### Demo accounts
 
-## 🔌 API Endpoints
+`seed_demo_data` creates a full demo school (3 grades, 6 sections, 24 students,
+teachers, guardians, invoices and published exams). All demo passwords are
+**not** temporary, so you can sign in immediately.
 
-### Authentication
-- `POST /api/v1/accounts/auth/register/` - Register user
-- `POST /api/v1/accounts/auth/login/` - Login user
-- `POST /api/v1/accounts/auth/logout/` - Logout user
-- `POST /api/v1/accounts/auth/change-password/` - Change password
-- `GET /api/v1/accounts/auth/me/` - Get current user
+| Role        | Email                      | Password       |
+|-------------|----------------------------|----------------|
+| Admin       | `admin@school.example`     | `Admin@12345`  |
+| Teacher     | `teacher@school.example`   | `Teacher@12345`|
+| Accountant  | `accountant@school.example`| `Account@12345`|
+| Student     | `student@school.example`   | `Student@12345`|
+| Parent      | `parent@school.example`    | `Parent@12345` |
 
-### User Management
-- `GET /api/v1/accounts/users/` - List users (admin)
-- `GET /api/v1/accounts/users/{uuid}/` - Get user
-- `PUT /api/v1/accounts/users/{uuid}/` - Update user
-- `DELETE /api/v1/accounts/users/{uuid}/` - Delete user (soft)
+## 🧪 Tests
 
-**For complete API documentation**, see [API_DOCUMENTATION.md](API_DOCUMENTATION.md)
+```bash
+cd backend
+.venv/bin/python -m pytest        # 70 tests, all green
+```
 
----
+The suite covers authentication, account lockout, JWT rotation/blacklisting,
+token-version revocation, the forced-password gate, RBAC and IDOR protection,
+attendance bulk marking, exam publishing, finance atomicity and image-upload
+validation.
 
-## 👥 System Roles
+## 🔐 Security
 
-| Role | Description | Permissions |
-|------|-------------|------------|
-| **Admin** | System administrator | Full access to all features |
-| **Teacher** | Educator | Can manage courses and grades |
-| **Student** | Learner | View-only access to courses and personal grades |
-| **Parent** | Guardian | View-only access to student grades |
+The system is hardened by design. Key guarantees:
 
----
+- **JWT access tokens live in memory only** (never `localStorage`), limiting XSS
+  impact. The **refresh token lives in an HttpOnly, SameSite cookie**
+  (`school_erp_refresh`) scoped to the auth API, and is **rotated and
+  blacklisted** on every use.
+- **Token-version invalidation** — every password change/reset, admin reset or
+  deactivation increments the user's `token_version`, so *all* previously issued
+  access tokens are rejected immediately and all refresh tokens are blacklisted.
+- **Forced password change** — admin-created accounts get a temporary password
+  and `must_change_password`; the API refuses everything except password change,
+  profile and logout until the password is updated (enforced server-side, not
+  just in the UI).
+- **Account lockout** — 5 failed attempts in 15 minutes locks the account; login
+  errors are generic so accounts cannot be enumerated.
+- **RBAC + row-level scoping** — every queryset is scoped to the user's role
+  (students see only themselves, parents only linked children, teachers only
+  their sections/classes), preventing IDOR.
+- **Public self-registration is disabled** by default; admins create accounts.
+- **Password policy** — minimum length, complexity (upper/lower/digit/symbol),
+  common-password and similarity checks.
+- **Upload hardening** — MIME sniffing with Pillow, extension allow-list, 2 MB
+  limit, random storage paths.
+- **Transport security** — production refuses to start without HTTPS-only
+  `FRONTEND_URL`/CORS/CSRF origins, an explicit `ALLOWED_HOSTS`, a strong
+  `SECRET_KEY`, a secure refresh cookie and `AUTH_COOKIE_SECURE=True`.
+- **Django hardening** — CSP and security headers, throttling on auth/sensitive
+  endpoints, soft deletes and protected foreign keys, admin-only schema in
+  production.
 
-## 🗄️ Database Models
-
-### Core Models
-- **User** - Custom user model with email authentication
-- **Role** - User roles for RBAC
-- **Permission** - Fine-grained permissions
-- **UserRole** - User-Role relationship
-- **RolePermission** - Role-Permission relationship
-- **LoginHistory** - Login audit trail
-
-**For detailed model documentation**, see [ARCHITECTURE.md](ARCHITECTURE.md)
-
----
-
-## 🔐 Security Features
-
-- ✅ JWT token-based authentication
-- ✅ Password hashing (PBKDF2)
-- ✅ Email as unique identifier
-- ✅ Role-Based Access Control (RBAC)
-- ✅ Login attempt tracking
-- ✅ Soft delete for data preservation
-- ✅ CORS protection
-- ✅ Environment variable configuration
-
----
+See [ARCHITECTURE.md](ARCHITECTURE.md#-security-model) for the full model.
 
 ## 📚 Documentation
 
-- **[SETUP_GUIDE.md](SETUP_GUIDE.md)** - Detailed setup instructions
-- **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)** - Complete API reference
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture overview
+- **[SETUP_GUIDE.md](SETUP_GUIDE.md)** — step-by-step setup, environment and deployment.
+- **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)** — complete endpoint reference.
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** — system design, apps, permissions and security model.
+- `frontend/README.md` — frontend structure and conventions.
 
----
+## 📋 API Overview
 
-## 🛠️ Tech Stack
+All endpoints are under `/api/v1/` and use UUID lookup. Paginated responses use:
 
-### Backend
-- Django 6.0.6
-- Django REST Framework 3.14.0
-- django-rest-framework-simplejwt 5.3.2
-- django-cors-headers 4.3.0
-- python-decouple 3.8
-- Pillow 10.1.0
-
-### Database
-- SQLite (development)
-- PostgreSQL (production)
-
-### Testing
-- pytest
-- pytest-django
-
-### Tools
-- Docker (optional)
-- Git
-- Virtual Environment
-
----
-
-## 📋 Features Status
-
-### ✅ Implemented
-- [x] User authentication (JWT)
-- [x] User registration and login
-- [x] User profile management
-- [x] Role-based access control
-- [x] Permission system
-- [x] Login history tracking
-- [x] Django admin interface
-- [x] API documentation
-
-### 🚧 In Progress
-- [ ] Frontend (React/Vue)
-- [ ] Student module
-- [ ] Course management
-- [ ] Grade management
-
-### 📅 Planned
-- [ ] Finance/Payment module
-- [ ] Communication system
-- [ ] Advanced reporting
-- [ ] Mobile app
-- [ ] GraphQL API
-
----
-
-## 🧪 Testing
-
-```bash
-# Run all tests
-pytest
-
-# Run specific app tests
-pytest apps/accounts/
-
-# With coverage
-pytest --cov
-
-# Verbose output
-pytest -v
+```json
+{ "count": 24, "next": null, "previous": null, "page": 1,
+  "page_size": 20, "total_pages": 2, "results": [ ... ] }
 ```
 
----
+| Area          | Prefix                                  |
+|---------------|-----------------------------------------|
+| Auth          | `accounts/auth/`                        |
+| Accounts/RBAC | `accounts/` (`users`, `roles`, `permissions`, `login-history`) |
+| Academics     | `academics/` (years, classes, sections, subjects, students, teachers, timetable) |
+| Attendance    | `attendance/` (+ `bulk`, `sheet`, `summary`, `today`) |
+| Exams         | `exams/`, `exam-subjects/`, `exam-results/` |
+| Finance       | `finance/` (fee-categories, fee-structures, invoices, payments) |
+| Communication | `announcements/`                        |
+| Dashboard     | `dashboard/overview`, `dashboard/search`, `health` |
 
-## 🐛 Troubleshooting
+## 🛠️ Management Commands
 
-### Port Already in Use
-```bash
-# Kill process on port 8000
-netstat -ano | findstr :8000
-taskkill /PID <PID> /F
-```
-
-### Database Issues
-```bash
-# Reset database (development only)
-rm db.sqlite3
-python manage.py migrate
-```
-
-### Import Errors
-```bash
-# Ensure virtual environment is activated
-pip install -r requirements.txt
-```
-
-**For more issues**, see [SETUP_GUIDE.md](SETUP_GUIDE.md#-troubleshooting)
-
----
-
-## 🤝 Contributing
-
-1. Create a feature branch
-   ```bash
-   git checkout -b feature/your-feature
-   ```
-
-2. Make changes and commit
-   ```bash
-   git add .
-   git commit -m "Add your feature"
-   ```
-
-3. Push to repository
-   ```bash
-   git push origin feature/your-feature
-   ```
-
-4. Create a pull request
-
----
-
-## 📞 Support
-
-For issues and questions:
-- Check documentation files
-- Review API documentation
-- Check Django/DRF documentation
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see LICENSE file for details.
-
----
-
-## 👨‍💻 Authors
-
-- Backend Architecture & Implementation
-
----
-
-## 🎯 Goals
-
-- Create a modern, scalable school management system
-- Provide comprehensive admin dashboard
-- Support multiple user roles and permissions
-- Ensure data security and integrity
-- Facilitate easy customization and expansion
-
----
+| Command                    | Purpose                                        |
+|----------------------------|------------------------------------------------|
+| `create_initial_roles`     | Seed the five system roles and permission catalogue |
+| `seed_demo_data`           | Create the demo school, users and sample data  |
 
 ## 📈 Project Status
 
-**Current Version:** 1.0.0 (Backend Ready)
-**Status:** ✅ Backend architecture complete and tested
-**Next Phase:** Frontend development
-
----
-
-## 🔄 Environment Setup
-
-### Development
-```
-DEBUG=True
-DATABASE=SQLite
-TESTING=True
-```
-
-### Production
-```
-DEBUG=False
-DATABASE=PostgreSQL
-TESTING=False
-```
-
----
-
-## 📞 Contact & Resources
-
-- **Django**: https://www.djangoproject.com/
-- **DRF**: https://www.django-rest-framework.org/
-- **JWT**: https://jwt.io/
-- **REST API Design**: https://restfulapi.net/
-
----
-
-**Last Updated:** January 2024
-
-**⭐ If you find this project helpful, please star it!**
+- **Version:** 1.0.0
+- **Status:** ✅ Complete — backend + frontend + tests + docs
+- **Roles:** Admin, Teacher, Accountant, Student, Parent
+- **Tests:** 70 passing
+- **License:** MIT
