@@ -124,6 +124,33 @@ teachers, guardians, invoices and published exams). All demo passwords are
 | Student     | `student@school.example`   | `Student@12345`|
 | Parent      | `parent@school.example`    | `Parent@12345` |
 
+## 🐳 Docker & Kubernetes
+
+The project ships a production-ready, multi-stage container image and a
+Kubernetes (Kustomize) deployment that scales horizontally.
+
+```bash
+# Local full stack: PostgreSQL + Redis + Django + nginx
+cp .env.compose.example .env      # set a real SECRET_KEY and DB password
+docker compose up -d --build
+open http://localhost:8080
+```
+
+```bash
+# Kubernetes
+cp deploy/k8s/secret.example.yaml deploy/k8s/secret.yaml
+# edit secrets, configmap host names and the image tag, then:
+kubectl apply -f deploy/k8s/secret.yaml
+kubectl apply -k deploy/k8s
+make k8s-migrate
+```
+
+The deployment includes liveness/readiness probes, a HorizontalPodAutoscaler
+(2–10 backend pods), a PodDisruptionBudget, migration Job, shared Redis cache,
+PostgreSQL StatefulSet, TLS Ingress, and a media server backed by an RWX volume.
+See **[DEPLOYMENT.md](DEPLOYMENT.md)** for the full guide and
+`deploy/k8s/README.md` for the short runbook.
+
 ## 🧪 Tests
 
 ```bash
@@ -171,6 +198,9 @@ The system is hardened by design. Key guarantees:
 See [ARCHITECTURE.md](ARCHITECTURE.md#-security-model) for the full model.
 
 ## 📚 Documentation
+
+- [DEPLOYMENT.md](DEPLOYMENT.md) — Docker and Kubernetes deployment guide
+- [AI_HANDOFF.md](AI_HANDOFF.md) — project status and handoff tracker
 
 - **[SETUP_GUIDE.md](SETUP_GUIDE.md)** — step-by-step setup, environment and deployment.
 - **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)** — complete endpoint reference.

@@ -1,0 +1,53 @@
+# Restrict who can reach the database and cache.
+# The backend already only exposes the API through the Ingress controller.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: school-erp-postgres
+  namespace: school-erp
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: school-erp
+      app.kubernetes.io/component: database
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: school-erp
+              app.kubernetes.io/component: backend
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: school-erp
+              app.kubernetes.io/component: migration
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: school-erp-redis
+  namespace: school-erp
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: school-erp
+      app.kubernetes.io/component: cache
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: school-erp
+              app.kubernetes.io/component: backend
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: school-erp
+              app.kubernetes.io/component: migration
+      ports:
+        - protocol: TCP
+          port: 6379

@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: school-erp-backend
+  namespace: school-erp
+  labels:
+    app.kubernetes.io/name: school-erp
+    app.kubernetes.io/component: backend
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: school-erp
+      app.kubernetes.io/component: backend

@@ -5,6 +5,7 @@ Environment values are read with python-decouple from ``backend/.env``.
 Real secrets must never be committed to source control.
 """
 
+import os
 from datetime import timedelta
 from pathlib import Path
 
@@ -16,9 +17,14 @@ from decouple import AutoConfig
 # ---------------------------------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parents[2]
 PROJECT_ROOT = BASE_DIR.parent
-FRONTEND_DIST = PROJECT_ROOT / "frontend" / "dist"
 
 config = AutoConfig(search_path=BASE_DIR)
+
+# Container deployments mount the built SPA and data volumes at custom paths,
+# so every filesystem location can be overridden with an environment variable.
+FRONTEND_DIST = Path(
+    config("FRONTEND_DIST", default=str(PROJECT_ROOT / "frontend" / "dist"))
+)
 
 # ---------------------------------------------------------------------------
 # Core security
@@ -45,6 +51,16 @@ ALLOWED_HOSTS = config(
     default="127.0.0.1,localhost,testserver",
     cast=lambda value: [item.strip() for item in value.split(",") if item.strip()],
 )
+
+# Kubernetes HTTP probes connect to the pod IP and send it as the Host header.
+# The Downward API injects POD_IP, so allow exactly that address without
+# weakening host validation for public traffic. IPv6 literals appear in the
+# Host header inside brackets, so allow both forms.
+POD_IP = config("POD_IP", default="").strip()
+if POD_IP:
+    for pod_host in {POD_IP, f"[{POD_IP}]"}:
+        if pod_host not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(pod_host)
 
 CSRF_TRUSTED_ORIGINS = config(
     "CSRF_TRUSTED_ORIGINS",
@@ -136,7 +152,32 @@ else:
             "HOST": config("DB_HOST", default="localhost"),
             "PORT": config("DB_PORT", default="5432"),
             "CONN_MAX_AGE": config("DB_CONN_MAX_AGE", default=60, cast=int),
+            "CONN_HEALTH_CHECKS": config(
+                "DB_CONN_HEALTH_CHECKS", default=True, cast=bool
+            ),
             "OPTIONS": {"sslmode": config("DB_SSLMODE", default="prefer")},
+        }
+    }
+
+# ---------------------------------------------------------------------------
+# Cache (shared across replicas when REDIS_URL is configured)
+# ---------------------------------------------------------------------------
+# DRF throttling and any cache-backed state use the default cache. A shared
+# Redis cache keeps rate limits consistent when the API runs as many pods.
+REDIS_URL = config("REDIS_URL", default="")
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+            "TIMEOUT": 300,
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "school-erp-local",
         }
     }
 
@@ -173,16 +214,19 @@ USE_X_FORWARDED_FOR = config("USE_X_FORWARDED_FOR", default=False, cast=bool)
 # Static & media files
 # ---------------------------------------------------------------------------
 STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = Path(config("STATIC_ROOT", default=str(BASE_DIR / "staticfiles")))
 STATICFILES_DIRS = [BASE_DIR / "static"] if (BASE_DIR / "static").exists() else []
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
 WHITENOISE_MAX_AGE = 31536000
+# Serve the compiled SPA's /assets/* directly from WhiteNoise (efficient,
+# cacheable) instead of routing every asset through a Django view.
+WHITENOISE_ROOT = str(FRONTEND_DIST) if FRONTEND_DIST.exists() else None
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = Path(config("MEDIA_ROOT", default=str(BASE_DIR / "media")))
 
 # Upload limits (defence in depth; serializers validate file type & size too)
 DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
@@ -295,8 +339,27 @@ DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="School ERP <no-reply@
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
-LOG_DIR = BASE_DIR / "logs"
-LOG_DIR.mkdir(parents=True, exist_ok=True)
+LOG_DIR = Path(config("LOG_DIR", default=str(BASE_DIR / "logs")))
+try:
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    LOG_DIR_WRITABLE = os.access(LOG_DIR, os.W_OK)
+except OSError:
+    # Read-only container filesystems may not provide a writable log directory.
+    # File logging is then disabled and console (stdout) logging is used.
+    LOG_DIR_WRITABLE = False
+
+_LOG_HANDLERS = ["console", "file"] if LOG_DIR_WRITABLE else ["console"]
+_LOGGING_HANDLERS = {
+    "console": {"class": "logging.StreamHandler", "formatter": "simple"},
+}
+if LOG_DIR_WRITABLE:
+    _LOGGING_HANDLERS["file"] = {
+        "class": "logging.handlers.RotatingFileHandler",
+        "filename": LOG_DIR / "django.log",
+        "maxBytes": 5 * 1024 * 1024,
+        "backupCount": 5,
+        "formatter": "verbose",
+    }
 
 LOGGING = {
     "version": 1,
@@ -308,30 +371,21 @@ LOGGING = {
         },
         "simple": {"format": "{levelname} {message}", "style": "{"},
     },
-    "handlers": {
-        "console": {"class": "logging.StreamHandler", "formatter": "simple"},
-        "file": {
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": LOG_DIR / "django.log",
-            "maxBytes": 5 * 1024 * 1024,
-            "backupCount": 5,
-            "formatter": "verbose",
-        },
-    },
+    "handlers": _LOGGING_HANDLERS,
     "root": {"handlers": ["console"], "level": "INFO"},
     "loggers": {
         "django": {
-            "handlers": ["console", "file"],
+            "handlers": _LOG_HANDLERS,
             "level": "INFO",
             "propagate": False,
         },
         "apps": {
-            "handlers": ["console", "file"],
+            "handlers": _LOG_HANDLERS,
             "level": "INFO",
             "propagate": False,
         },
         "django.security": {
-            "handlers": ["console", "file"],
+            "handlers": _LOG_HANDLERS,
             "level": "WARNING",
             "propagate": False,
         },

@@ -1,0 +1,114 @@
+# One-shot migration + role bootstrap.
+#
+# Run this BEFORE rolling out a new backend image:
+#   kubectl -n school-erp delete job school-erp-migrate --ignore-not-found
+#   kubectl apply -k deploy/k8s/jobs
+#   kubectl -n school-erp wait --for=condition=complete job/school-erp-migrate --timeout=300s
+#
+# Never run migrations from every application pod: concurrent migrations race.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: school-erp-migrate
+  namespace: school-erp
+  labels:
+    app.kubernetes.io/name: school-erp
+    app.kubernetes.io/component: migration
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: school-erp
+        app.kubernetes.io/component: migration
+    spec:
+      restartPolicy: OnFailure
+      terminationGracePeriodSeconds: 30
+      serviceAccountName: school-erp
+      # Uncomment if the image lives in a private registry:
+      # imagePullSecrets:
+      #   - name: ghcr-pull
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER"; do echo "waiting for postgres"; sleep 2; done
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: school-erp-config
+                  key: DB_HOST
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: school-erp-config
+                  key: DB_PORT
+            - name: DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: school-erp-config
+                  key: DB_USER
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "16Mi"
+            limits:
+              cpu: "100m"
+              memory: "64Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      containers:
+        - name: migrate
+          image: ghcr.io/smsmorsalin/school-erp:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - python manage.py migrate --noinput && python manage.py create_initial_roles
+          envFrom:
+            - configMapRef:
+                name: school-erp-config
+            - secretRef:
+                name: school-erp-secrets
+          env:
+            - name: HOME
+              value: /tmp
+            - name: TMPDIR
+              value: /tmp
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: logs
+              mountPath: /app/backend/logs
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}

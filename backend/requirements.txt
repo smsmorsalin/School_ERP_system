@@ -1,4 +1,4 @@
-﻿Django==6.0.6
+Django==6.0.6
 djangorestframework==3.16.1
 djangorestframework-simplejwt==5.5.1
 django-cors-headers==4.7.0
@@ -8,6 +8,10 @@ python-decouple==3.8
 Pillow==11.3.0
 whitenoise==6.9.0
 gunicorn==23.0.0
+
+# Shared cache for throttling/rate limits across replicas (built-in Django
+# Redis backend; the server itself is provided by Docker/Kubernetes).
+redis==5.2.1
 
 # PostgreSQL (recommended for production)
 psycopg[binary]==3.2.9

@@ -1,0 +1,21 @@
+# Python
+backend/.venv
+backend/__pycache__
+backend/**/*.pyc
+backend/**/*.pyo
+backend/*.sqlite3
+backend/.env
+backend/staticfiles
+backend/media
+
+# Node
+frontend/node_modules
+frontend/dist
+
+# VCS
+.git
+.gitignore
+
+# Local/editor
+.vscode
+.DS_Store

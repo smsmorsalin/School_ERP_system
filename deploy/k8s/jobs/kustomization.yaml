@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: school-erp
+
+resources:
+  - migrate.yaml
+
+# Keep this in sync with deploy/k8s/kustomization.yaml.
+images:
+  - name: ghcr.io/smsmorsalin/school-erp
+    newTag: latest

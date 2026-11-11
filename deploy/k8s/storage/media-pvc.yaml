@@ -1,0 +1,22 @@
+# Shared media volume for uploaded profile images.
+#
+# IMPORTANT: the backend and the media nginx deployment both mount this claim,
+# so the StorageClass MUST support ReadWriteMany (NFS, EFS, CephFS, Longhorn
+# RWX, Azure Files, etc.). If your cluster only has ReadWriteOnce storage,
+# either pin the backend to a single replica or move uploads to object storage
+# (S3-compatible) — see deploy/k8s/README.md.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: school-erp-media
+  namespace: school-erp
+  labels:
+    app.kubernetes.io/name: school-erp
+    app.kubernetes.io/component: media
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  # storageClassName: nfs-client   # set to a StorageClass that supports RWX

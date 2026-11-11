@@ -52,16 +52,16 @@ if settings.DEBUG:
         )
     ]
 
-# Single-page frontend. WhiteNoise serves hashed assets; any non-API route
-# falls back to index.html so client-side routing works.
+# Single-page frontend. WhiteNoise serves the hashed /assets/* files directly
+# (WHITENOISE_ROOT), and any non-API route falls back to index.html so that
+# client-side routing works.
 if settings.FRONTEND_DIST.exists():
     from apps.core.spa import SpaView
 
     urlpatterns += [
         re_path(
-            r"^assets/(?P<path>.*)$",
-            static_serve,
-            {"document_root": settings.FRONTEND_DIST / "assets"},
+            r"^(?!api/|admin/|static/|media/|assets/).*$",
+            SpaView.as_view(),
+            name="spa",
         ),
-        re_path(r"^(?!api/|admin/|static/|media/).*$", SpaView.as_view(), name="spa"),
     ]

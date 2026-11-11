@@ -33,15 +33,18 @@ def get_client_ip(request) -> str:
     trusted proxy is configured.
 
     By default we use REMOTE_ADDR. Deployments behind a reverse proxy should
-    set ``USE_X_FORWARDED_FOR=true`` and make sure the proxy overwrites the
-    header (nginx ``proxy_set_header X-Forwarded-For $remote_addr``).
+    set ``USE_X_FORWARDED_FOR=true`` and make sure the proxy appends (not
+    blindly trusts) the header.
+
+    The **right-most** value is used because it is the address observed by our
+    own trusted proxy. Client-supplied values sit to the left of it and can be
+    spoofed; trusting the left-most value would let an attacker rotate the
+    apparent IP and bypass throttling.
     """
     if getattr(settings, "USE_X_FORWARDED_FOR", False):
         forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
         if forwarded:
-            # Right-most untrusted hop is the immediate peer; use the first
-            # address added by our own proxy.
-            candidate = forwarded.split(",")[0].strip()
+            candidate = forwarded.split(",")[-1].strip()
             if candidate:
                 return candidate
     return request.META.get("REMOTE_ADDR") or "0.0.0.0"

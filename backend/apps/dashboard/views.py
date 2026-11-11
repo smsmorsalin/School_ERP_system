@@ -386,8 +386,44 @@ class GlobalSearchView(APIView):
         return Response(results)
 
 
+class LivenessView(APIView):
+    """Process liveness probe.
+
+    Deliberately does not touch the database: a database outage must not cause
+    Kubernetes to restart every healthy API pod.
+    """
+
+    permission_classes = []
+    authentication_classes = []
+
+    @extend_schema(responses={200: OpenApiTypes.OBJECT})
+    def get(self, request):
+        return Response({"status": "ok"})
+
+
+class ReadinessView(APIView):
+    """Readiness probe: only receive traffic when the database is reachable."""
+
+    permission_classes = []
+    authentication_classes = []
+
+    @extend_schema(responses={200: OpenApiTypes.OBJECT, 503: OpenApiTypes.OBJECT})
+    def get(self, request):
+        from django.db import connection
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+        except Exception:
+            return Response(
+                {"status": "unavailable", "database": "error"},
+                status=503,
+            )
+        return Response({"status": "ready", "database": "ok"})
+
+
 class HealthView(APIView):
-    """Lightweight liveness probe (no sensitive details)."""
+    """Combined status probe kept for backwards compatibility."""
 
     permission_classes = []
     authentication_classes = []

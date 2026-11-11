@@ -1,0 +1,57 @@
+# Non-secret runtime configuration shared by the backend pods and the
+# migration job. Change the host names to match your domain before deploying.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: school-erp-config
+  namespace: school-erp
+  labels:
+    app.kubernetes.io/name: school-erp
+data:
+  # Django
+  DJANGO_SETTINGS_MODULE: "config.settings.production"
+  DEBUG: "False"
+  TIME_ZONE: "Asia/Dhaka"
+  LANGUAGE_CODE: "en-us"
+  ALLOWED_HOSTS: "school.example,localhost,127.0.0.1,school-erp-backend,school-erp-backend.school-erp.svc,school-erp-backend.school-erp.svc.cluster.local"
+  FRONTEND_URL: "https://school.example"
+  CORS_ALLOWED_ORIGINS: "https://school.example"
+  CSRF_TRUSTED_ORIGINS: "https://school.example"
+  SECURE_SSL_REDIRECT: "True"
+  SECURE_HSTS_SECONDS: "31536000"
+  USE_X_FORWARDED_FOR: "True"
+
+  # Database
+  DB_ENGINE: "django.db.backends.postgresql"
+  DB_NAME: "schoolerp"
+  DB_USER: "schoolerp"
+  DB_HOST: "school-erp-postgres"
+  DB_PORT: "5432"
+  DB_SSLMODE: "prefer"
+  DB_CONN_MAX_AGE: "60"
+  DB_CONN_HEALTH_CHECKS: "True"
+
+  # Auth / tokens
+  AUTH_COOKIE_SECURE: "True"
+  JWT_ACCESS_MINUTES: "15"
+  JWT_REFRESH_DAYS: "1"
+  ALLOW_PUBLIC_REGISTRATION: "False"
+
+  # Shared cache for rate limiting across replicas.
+  REDIS_URL: "redis://school-erp-redis:6379/1"
+
+  # Email (switch to SMTP in the Secret once a mail provider is configured).
+  EMAIL_BACKEND: "django.core.mail.backends.console.EmailBackend"
+  EMAIL_PORT: "587"
+  EMAIL_USE_TLS: "True"
+  DEFAULT_FROM_EMAIL: "School ERP <no-reply@school.example>"
+
+  # Gunicorn
+  WEB_CONCURRENCY: "3"
+  GUNICORN_THREADS: "4"
+  GUNICORN_TIMEOUT: "60"
+  GUNICORN_MAX_REQUESTS: "1000"
+
+  # The migration Job runs migrations explicitly; pods must not.
+  RUN_MIGRATIONS: "0"
+  CREATE_INITIAL_ROLES: "0"

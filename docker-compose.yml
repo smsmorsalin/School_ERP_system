@@ -1,0 +1,115 @@
+# Local / single-host container stack: PostgreSQL + Redis + Django + nginx.
+#
+#   cp .env.compose.example .env      # optional: review secrets and host names
+#   docker compose up -d --build
+#   open http://localhost:8080
+#
+# This stack intentionally uses the development settings module with
+# DEBUG=False so it can run over plain HTTP. For a real deployment use the
+# Kubernetes manifests (production settings) or terminate TLS in front of it.
+
+name: school-erp
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-schoolerp}
+      POSTGRES_USER: ${POSTGRES_USER:-schoolerp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-before-exposing}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # Named volumes are created as root. The API image runs as uid 10001, so a
+  # one-shot init container gives it ownership of the media volume.
+  media-init:
+    image: busybox:1.36
+    user: "0:0"
+    command: ["sh", "-c", "chown -R 10001:10001 /media && chmod 0775 /media"]
+    volumes:
+      - media:/media
+    restart: "no"
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: school-erp:local
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.development
+      DEBUG: "False"
+      SECRET_KEY: ${SECRET_KEY:-dev-only-secret-key-change-me-000000000000000000000000}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,backend}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-http://localhost:8080}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8080}
+      DB_ENGINE: django.db.backends.postgresql
+      DB_NAME: ${POSTGRES_DB:-schoolerp}
+      DB_USER: ${POSTGRES_USER:-schoolerp}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-change-me-before-exposing}
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_SSLMODE: disable
+      REDIS_URL: redis://redis:6379/1
+      AUTH_COOKIE_SECURE: "False"
+      SECURE_SSL_REDIRECT: "False"
+      TIME_ZONE: ${TIME_ZONE:-Asia/Dhaka}
+      EMAIL_BACKEND: ${EMAIL_BACKEND:-django.core.mail.backends.console.EmailBackend}
+      RUN_MIGRATIONS: "1"
+      CREATE_INITIAL_ROLES: "1"
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-0}
+      USE_X_FORWARDED_FOR: "True"
+    volumes:
+      - media:/app/backend/media
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      media-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -H 'X-Forwarded-Proto: https' http://localhost:8000/api/v1/health/ready/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - media:/var/www/media:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/healthz >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  media:
