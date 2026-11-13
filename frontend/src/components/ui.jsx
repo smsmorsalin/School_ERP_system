@@ -56,6 +56,7 @@ const STATUS_TONE = {
   present: "green",
   paid: "green",
   success: "green",
+  succeeded: "green",
   published: "green",
   partial: "amber",
   late: "amber",
@@ -69,6 +70,7 @@ const STATUS_TONE = {
   suspended: "red",
   graduated: "violet",
   transferred: "neutral",
+  expired: "neutral",
   logout: "neutral",
 };
 

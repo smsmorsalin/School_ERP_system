@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import {
   Ban,
   CalendarClock,
+  CreditCard,
   Download,
   FileText,
   Pencil,
@@ -18,6 +19,7 @@ import { api } from "../lib/api";
 import { downloadCSV, formatDate, formatDateTime, money, statusTone, todayISO } from "../lib/format";
 import { PAYMENT_METHODS } from "../lib/constants";
 import { useDebounced, useFetch, useList, useReferenceData } from "../lib/hooks";
+import OnlinePaymentModal from "../components/OnlinePaymentModal";
 import {
   Avatar,
   Badge,
@@ -54,6 +56,7 @@ function InvoicesView({ canManage }) {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [paying, setPaying] = useState(null);
+  const [onlinePaying, setOnlinePaying] = useState(null);
   const [receipt, setReceipt] = useState(null);
   const [receiptLoading, setReceiptLoading] = useState(false);
   const [deleting, setDeleting] = useState(null);
@@ -192,6 +195,9 @@ function InvoicesView({ canManage }) {
                       <td><StatusBadge status={invoice.effective_status || invoice.status} /></td>
                       <td className="actions">
                         <button type="button" className="btn btn-secondary btn-sm" onClick={() => openReceipt(invoice)}><FileText size={13} /> View</button>
+                        {!canManage && Number(invoice.balance) > 0 && invoice.status !== "cancelled" ? (
+                          <button type="button" className="btn btn-primary btn-sm" onClick={() => setOnlinePaying(invoice)}><CreditCard size={13} /> Pay online</button>
+                        ) : null}
                         {canManage && Number(invoice.balance) > 0 && invoice.status !== "cancelled" ? (
                           <button type="button" className="btn btn-primary btn-sm" onClick={() => setPaying(invoice)}><Wallet size={13} /> Pay</button>
                         ) : null}
@@ -221,6 +227,7 @@ function InvoicesView({ canManage }) {
 
       <InvoiceFormModal open={formOpen} onClose={() => setFormOpen(false)} invoice={editing} students={students} onSaved={() => { setFormOpen(false); list.reload(); overview.reload(); }} />
       <PaymentModal invoice={paying} onClose={() => setPaying(null)} onSaved={() => { setPaying(null); list.reload(); overview.reload(); }} />
+      <OnlinePaymentModal open={Boolean(onlinePaying)} invoice={onlinePaying} onClose={() => setOnlinePaying(null)} />
       <ReceiptModal receipt={receipt} loading={receiptLoading} onClose={() => setReceipt(null)} />
       <ConfirmDialog open={Boolean(deleting)} onClose={() => setDeleting(null)} onConfirm={remove} busy={busy} title="Delete this invoice?" message={`${deleting?.invoice_number} will be removed. Invoices with payments cannot be deleted.`} confirmLabel="Delete invoice" />
     </>

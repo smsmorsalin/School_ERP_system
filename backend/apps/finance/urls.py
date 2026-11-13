@@ -5,7 +5,10 @@ from apps.finance.views import (
     FeeCategoryViewSet,
     FeeStructureViewSet,
     InvoiceViewSet,
+    PaymentGatewayListView,
+    PaymentIntentViewSet,
     PaymentViewSet,
+    PaymentWebhookView,
 )
 
 router = DefaultRouter()
@@ -13,5 +16,14 @@ router.register("finance/fee-categories", FeeCategoryViewSet, basename="fee-cate
 router.register("finance/fee-structures", FeeStructureViewSet, basename="fee-structure")
 router.register("finance/invoices", InvoiceViewSet, basename="invoice")
 router.register("finance/payments", PaymentViewSet, basename="payment")
+router.register("finance/payment-intents", PaymentIntentViewSet, basename="payment-intent")
 
-urlpatterns = [path("", include(router.urls))]
+urlpatterns = [
+    path("finance/payment-gateways/", PaymentGatewayListView.as_view(), name="payment-gateways"),
+    path(
+        "finance/payment-webhook/<str:gateway>/",
+        PaymentWebhookView.as_view(),
+        name="payment-webhook",
+    ),
+    path("", include(router.urls)),
+]

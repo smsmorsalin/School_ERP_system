@@ -50,6 +50,33 @@ if not FRONTEND_URL.startswith("https://"):
         "FRONTEND_URL must use https:// in production."
     )
 
+# ---------------------------------------------------------------------------
+# Online payment safety
+# ---------------------------------------------------------------------------
+# Online payments are opt-in in production: a school that has not completed
+# merchant onboarding must not expose a non-functional checkout.
+PAYMENT_ONLINE_ENABLED = config("PAYMENT_ONLINE_ENABLED", default=False, cast=bool)
+PAYMENT_SANDBOX = config("PAYMENT_SANDBOX", default=False, cast=bool)
+PAYMENT_WEBHOOK_SECRET = config("PAYMENT_WEBHOOK_SECRET", default="")
+PAYMENT_LIVE_CHECKOUT_BASE = config("PAYMENT_LIVE_CHECKOUT_BASE", default="")
+
+if PAYMENT_SANDBOX:
+    raise ImproperlyConfigured(
+        "PAYMENT_SANDBOX must be false in production. Sandbox payments never "
+        "move real money and are for development/staging only."
+    )
+if PAYMENT_ONLINE_ENABLED:
+    if len(PAYMENT_WEBHOOK_SECRET) < 32:
+        raise ImproperlyConfigured(
+            "Set PAYMENT_WEBHOOK_SECRET to at least 32 random characters when "
+            "online payments are enabled in production."
+        )
+    if not PAYMENT_LIVE_CHECKOUT_BASE.startswith("https://"):
+        raise ImproperlyConfigured(
+            "Set PAYMENT_LIVE_CHECKOUT_BASE to the HTTPS hosted-checkout URL "
+            "provided by your payment partner."
+        )
+
 for origin in CORS_ALLOWED_ORIGINS:
     if not origin.startswith("https://"):
         raise ImproperlyConfigured(

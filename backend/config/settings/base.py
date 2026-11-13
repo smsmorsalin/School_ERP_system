@@ -265,6 +265,8 @@ REST_FRAMEWORK = {
         "login": "10/min",
         "password_reset": "5/hour",
         "sensitive": "30/hour",
+        "payment_intent": "60/hour",
+        "payment_webhook": "1200/min",
     },
     "DATETIME_FORMAT": "iso-8601",
 }
@@ -320,8 +322,41 @@ CORS_ALLOW_HEADERS = [
     "user-agent",
     "x-csrftoken",
     "x-requested-with",
+    "idempotency-key",
 ]
 FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:5173")
+
+# ---------------------------------------------------------------------------
+# Online fee payments
+# ---------------------------------------------------------------------------
+# The sandbox adapter simulates a hosted gateway so the complete flow can be
+# tested without merchant credentials. Production must switch it off.
+PAYMENT_ONLINE_ENABLED = config("PAYMENT_ONLINE_ENABLED", default=True, cast=bool)
+PAYMENT_SANDBOX = config("PAYMENT_SANDBOX", default=DEBUG, cast=bool)
+PAYMENT_CURRENCY = config("PAYMENT_CURRENCY", default="BDT")
+PAYMENT_INTENT_TTL_MINUTES = config(
+    "PAYMENT_INTENT_TTL_MINUTES", default=30, cast=int
+)
+PAYMENT_WEBHOOK_SECRET = config("PAYMENT_WEBHOOK_SECRET", default="")
+PAYMENT_WEBHOOK_TOLERANCE_SECONDS = config(
+    "PAYMENT_WEBHOOK_TOLERANCE_SECONDS", default=300, cast=int
+)
+# Live gateways redirect the browser to their own hosted checkout page. Until
+# real merchant credentials are configured, this may stay empty in development.
+PAYMENT_LIVE_CHECKOUT_BASE = config("PAYMENT_LIVE_CHECKOUT_BASE", default="")
+
+if PAYMENT_INTENT_TTL_MINUTES < 5 or PAYMENT_INTENT_TTL_MINUTES > 120:
+    raise ImproperlyConfigured(
+        "PAYMENT_INTENT_TTL_MINUTES must be between 5 and 120 minutes."
+    )
+if PAYMENT_WEBHOOK_TOLERANCE_SECONDS < 30 or PAYMENT_WEBHOOK_TOLERANCE_SECONDS > 3600:
+    raise ImproperlyConfigured(
+        "PAYMENT_WEBHOOK_TOLERANCE_SECONDS must be between 30 and 3600 seconds."
+    )
+if PAYMENT_CURRENCY != "BDT":
+    raise ImproperlyConfigured(
+        "Only BDT is supported by the configured Bangladesh payment gateways."
+    )
 
 # ---------------------------------------------------------------------------
 # Email

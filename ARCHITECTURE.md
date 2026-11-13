@@ -53,10 +53,11 @@ backend/
 │   │                         # guardian links, timetable
 │   ├── attendance/           # attendance records, bulk marking, summaries
 │   ├── exams/                # exams, papers, results, report cards, analytics
-│   ├── finance/              # fee categories, structures, invoices, payments
+│   ├── finance/              # fee categories, structures, invoices, payments,
+│   │                         #   online payment intents + signed webhooks
 │   ├── communication/        # announcements + read receipts
 │   └── dashboard/            # role-aware overview + global search + health
-├── tests/                    # pytest suite (conftest + 7 test modules, 70 tests)
+├── tests/                    # pytest suite (conftest + 8 modules, 103 tests)
 ├── manage.py
 └── requirements.txt
 ```
@@ -71,7 +72,7 @@ backend/
 | `academics`   | Academic years, classes, sections, subjects, class-subject assignments, teacher/student/guardian profiles, guardian links, timetable |
 | `attendance`  | Per-student attendance, bulk marking, section sheet, summaries, "today" |
 | `exams`       | Exams, exam subjects/papers, results, grade bands, publishing, report cards with rank, analytics |
-| `finance`     | Fee categories, fee structures, invoices (bulk generate), payments (atomic), receipts, summaries |
+| `finance`     | Fee categories, fee structures, invoices (bulk generate), payments (atomic), receipts, summaries, online payment intents (bKash/Nagad/Rocket/other mobile banking/card/bank) and signed gateway webhooks |
 | `communication` | Announcements with audience (all/students/parents/teachers/class) and read receipts |
 | `dashboard`   | Role-aware overview aggregates, global search, health check |
 | `core`        | Shared `BaseModel`, RBAC permission classes, pagination, filters, error format, security middleware, SPA view |
@@ -205,7 +206,37 @@ Avatar uploads are validated with Pillow (real image decode), restricted to
 jpg/jpeg/png/webp, capped at 2 MB, and stored under a random path so the
 original filename is never used.
 
-### 6.4 Production safety
+### 6.4 Online payment security
+
+The online fee flow is built so a client can never decide how much money moves
+or when an invoice becomes paid.
+
+- **Server-side amounts** — the amount is validated against the invoice balance
+  while the invoice row is locked (`select_for_update`), so concurrent requests
+  cannot overpay.
+- **Idempotency** — `POST /finance/payment-intents/` requires an
+  `Idempotency-Key`; a unique constraint on `(created_by, idempotency_key)`
+  makes retries return the original intent, and a reused key with different
+  details is rejected with `409`.
+- **Atomic settlement** — a successful intent creates exactly one `Payment` and
+  recalculates the invoice in the same transaction. Settling an already-settled
+  intent returns it unchanged (no double credit). If the balance changed before
+  confirmation, the intent fails safely.
+- **Ownership** — students can only pay their own invoices, parents only their
+  linked children's, and an intent is visible only to the user who created it
+  for a visible invoice. Other users get `404` (no enumeration).
+- **Webhooks** — the callback endpoint is intentionally unauthenticated but
+  requires `X-Payment-Signature = HMAC-SHA256(PAYMENT_WEBHOOK_SECRET, raw_body)`
+  and a fresh `X-Payment-Timestamp` (default ±300s). Events are deduplicated by
+  `(gateway, event_id)`, unknown intents are acknowledged and ignored, and
+  amount/currency mismatches are rejected.
+- **Data minimisation** — card numbers, PINs, OTPs and wallet passwords never
+  reach the server. Only the provider transaction reference and a masked payer
+  reference (`*******5678`) are stored.
+- **Sandbox isolation** — sandbox confirmation is impossible unless
+  `PAYMENT_SANDBOX=True`; production settings refuse to start with it enabled.
+
+### 6.5 Production safety
 
 `config.settings.production` refuses to boot when any of these are unsafe:
 
@@ -213,12 +244,15 @@ original filename is never used.
 - empty or `*` `ALLOWED_HOSTS`,
 - a non-`https://` `FRONTEND_URL`, CORS or CSRF origin,
 - `AUTH_COOKIE_SECURE=False`,
+- `PAYMENT_SANDBOX=True`,
+- online payments enabled without a ≥32-char `PAYMENT_WEBHOOK_SECRET` or an
+  HTTPS `PAYMENT_LIVE_CHECKOUT_BASE`,
 - SQLite is used (warning; PostgreSQL strongly recommended).
 
 Production also enables `SECURE_SSL_REDIRECT`, HSTS, secure session/CSRF cookies
 and the admin-only schema (`/api/schema/` is disabled for non-staff).
 
-### 6.5 Frontend
+### 6.6 Frontend
 
 The React app uses a small `fetch` wrapper (`lib/api.js`) with **single-flight
 refresh**: when an API call returns `401`, the app calls `/refresh/` once,
@@ -296,6 +330,21 @@ frontend/src/
 
 Every step is permission- and scope-checked server-side; the UI is a thin layer
 over the same API.
+
+### Online payment flow
+
+1. A student/parent opens **Invoices → Pay online**. The modal loads
+   `GET /finance/payment-gateways/` for the enabled methods and flags.
+2. Submitting calls `POST /finance/payment-intents/` with an `Idempotency-Key`,
+   the invoice UUID, the gateway and (optionally) a partial amount.
+3. The server locks the invoice, validates the amount, and returns a checkout
+   URL. In sandbox mode this is the in-app `/checkout/{uuid}`; in live mode it
+   is the provider's hosted page.
+4. The browser polls `GET /finance/payment-intents/{uuid}/`. Settlement happens
+   only from the sandbox confirm endpoint (sandbox only) or a signed provider
+   webhook (live).
+5. Settlement creates exactly one immutable `Payment` and recalculates the
+   invoice, so the existing receipts/summaries immediately reflect it.
 
 ---
 

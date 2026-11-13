@@ -19,6 +19,7 @@ import Results from "./pages/Results";
 import Fees from "./pages/Fees";
 import Invoices from "./pages/Invoices";
 import Payments from "./pages/Payments";
+import Checkout from "./pages/Checkout";
 import Announcements from "./pages/Announcements";
 import Users from "./pages/Users";
 import Roles from "./pages/Roles";
@@ -201,6 +202,15 @@ export default function App() {
           element={
             <RequireRole roles={["Admin", "Accountant"]}>
               <Payments />
+            </RequireRole>
+          }
+        />
+
+        <Route
+          path="checkout/:uuid"
+          element={
+            <RequireRole roles={["Admin", "Accountant", "Student", "Parent"]}>
+              <Checkout />
             </RequireRole>
           }
         />

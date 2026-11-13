@@ -40,6 +40,20 @@ data:
   # Shared cache for rate limiting across replicas.
   REDIS_URL: "redis://school-erp-redis:6379/1"
 
+  # Online fee payments
+  # ---------------------------------------------------------------------
+  # Live online payments stay OFF until merchant onboarding is complete.
+  # To enable them:
+  #   1. put a strong PAYMENT_WEBHOOK_SECRET in the Secret;
+  #   2. set PAYMENT_LIVE_CHECKOUT_BASE (HTTPS) in the Secret or here;
+  #   3. flip PAYMENT_ONLINE_ENABLED to "True" and redeploy.
+  # PAYMENT_SANDBOX must never be "True" under production settings.
+  PAYMENT_ONLINE_ENABLED: "False"
+  PAYMENT_SANDBOX: "False"
+  PAYMENT_CURRENCY: "BDT"
+  PAYMENT_INTENT_TTL_MINUTES: "30"
+  PAYMENT_WEBHOOK_TOLERANCE_SECONDS: "300"
+
   # Email (switch to SMTP in the Secret once a mail provider is configured).
   EMAIL_BACKEND: "django.core.mail.backends.console.EmailBackend"
   EMAIL_PORT: "587"

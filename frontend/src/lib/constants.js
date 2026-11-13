@@ -51,6 +51,71 @@ export const PAYMENT_METHODS = [
   { value: "other", label: "Other" },
 ];
 
+// Fallback metadata used before /finance/payment-gateways/ responds. The API
+// remains the source of truth so new gateways can be enabled server-side.
+export const PAYMENT_GATEWAYS = [
+  {
+    code: "bkash",
+    label: "bKash",
+    category: "mobile_banking",
+    category_label: "Mobile banking",
+    description: "Pay from your bKash mobile wallet.",
+    brand_color: "#e2136e",
+    initials: "bK",
+  },
+  {
+    code: "nagad",
+    label: "Nagad",
+    category: "mobile_banking",
+    category_label: "Mobile banking",
+    description: "Pay from your Nagad mobile wallet.",
+    brand_color: "#f15a22",
+    initials: "Na",
+  },
+  {
+    code: "rocket",
+    label: "Rocket",
+    category: "mobile_banking",
+    category_label: "Mobile banking",
+    description: "Pay from your Rocket (DBBL) mobile wallet.",
+    brand_color: "#8c3494",
+    initials: "Ro",
+  },
+  {
+    code: "mobile_banking",
+    label: "Other mobile banking",
+    category: "mobile_banking",
+    category_label: "Mobile banking",
+    description: "Use another mobile banking or wallet provider.",
+    brand_color: "#0ea5e9",
+    initials: "MB",
+  },
+  {
+    code: "card",
+    label: "Debit / credit card",
+    category: "card",
+    category_label: "Cards",
+    description: "Visa, Mastercard, American Express and other cards.",
+    brand_color: "#1e3a8a",
+    initials: "CC",
+  },
+  {
+    code: "bank",
+    label: "Bank transfer",
+    category: "bank",
+    category_label: "Bank",
+    description: "Pay through internet banking or a bank transfer.",
+    brand_color: "#0f766e",
+    initials: "BK",
+  },
+];
+
+export const PAYMENT_GATEWAY_GROUPS = [
+  { category: "mobile_banking", label: "Mobile banking", hint: "bKash, Nagad, Rocket and other wallets" },
+  { category: "card", label: "Cards", hint: "Debit and credit cards" },
+  { category: "bank", label: "Bank", hint: "Internet banking or bank transfer" },
+];
+
 export const AUDIENCES = [
   { value: "all", label: "Everyone" },
   { value: "teachers", label: "Teachers" },

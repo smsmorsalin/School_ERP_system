@@ -10,7 +10,7 @@ class Section(BaseModel):
         on_delete=models.PROTECT,
         related_name="sections",
     )
-    name = models.CharField(max_length=20, help_text="e.g. A, B, Blue")
+    name = models.CharField(max_length=20, default="A", help_text="e.g. A, B, Blue")
     academic_year = models.ForeignKey(
         "academics.AcademicYear",
         on_delete=models.PROTECT,

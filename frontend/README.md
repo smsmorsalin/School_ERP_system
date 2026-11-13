@@ -31,8 +31,23 @@ src/
 │   ├── Layout.jsx        # sidebar + topbar shell
 │   ├── ui.jsx            # buttons, cards, tables, badges, inputs, modals
 │   └── charts.jsx        # SVG line / donut / bar charts
-└── pages/                # 22 route screens
+└── pages/                # 23 route screens (incl. the checkout page)
 ```
+
+## Online fee payments
+
+- Students see **Pay online** on their own unpaid invoices; parents see it on
+  linked children's invoices (`pages/Invoices.jsx`).
+- `components/OnlinePaymentModal.jsx` loads
+  `GET /finance/payment-gateways/`, groups the methods (mobile banking /
+  card / bank), lets the payer enter an amount capped at the balance, and
+  creates the intent with an `Idempotency-Key`.
+- `pages/Checkout.jsx` (`/checkout/:uuid`) runs the sandbox checkout
+  (pay / decline / cancel), polls the intent while pending, and shows
+  success/failure states. In live mode the browser is redirected to the
+  provider's hosted page instead.
+- No card numbers, PINs, OTPs or wallet passwords are ever entered in this app;
+  amounts are decided server-side.
 
 ## Commands
 

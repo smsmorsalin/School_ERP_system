@@ -205,7 +205,7 @@ function ClassGrid({ classes, canManage, onChanged, onOpenSections }) {
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <h3 style={{ fontSize: 16 }}>{item.name}</h3>
-                <div style={{ fontSize: 12, color: "var(--muted)" }}>Level {item.level}</div>
+                <div style={{ fontSize: 12, color: "var(--muted)" }}>Class number {item.level}</div>
               </div>
               {canManage ? (
                 <div style={{ display: "flex", gap: 2 }}>
@@ -303,10 +303,10 @@ function ClassFormModal({ open, onClose, item, onSaved }) {
     >
       <ErrorBanner error={error} onDismiss={() => setError(null)} />
       <form id="class-form" onSubmit={submit}>
-        <Field label="Class name" required hint="e.g. Grade 6">
+        <Field label="Class name" required hint="e.g. Class 1">
           <input className="input" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required />
         </Field>
-        <Field label="Level" required hint="Numeric ordering, e.g. 6">
+        <Field label="Class number" required hint="Numeric ordering, e.g. 1">
           <input className="input" type="number" min="1" value={form.level} onChange={(event) => setForm((current) => ({ ...current, level: event.target.value }))} required />
         </Field>
         <Field label="Description">
@@ -379,7 +379,7 @@ function SectionFormModal({ open, onClose, item, classes, years, defaultClass, o
         is_active: item.is_active ?? true,
       });
     } else {
-      setForm({ school_class: defaultClass || "", name: "", academic_year: years.find((year) => year.is_current)?.uuid || "", class_teacher: "", room: "", capacity: 40, is_active: true });
+      setForm({ school_class: defaultClass || "", name: "A", academic_year: years.find((year) => year.is_current)?.uuid || "", class_teacher: "", room: "", capacity: 40, is_active: true });
     }
   }, [open, item, defaultClass, years]);
 
@@ -428,7 +428,7 @@ function SectionFormModal({ open, onClose, item, classes, years, defaultClass, o
               {classes.map((item2) => <option key={item2.uuid} value={item2.uuid}>{item2.name}</option>)}
             </select>
           </Field>
-          <Field label="Section name" required hint="e.g. A, B or Blue">
+          <Field label="Section name" required hint="Defaults to A; you can change it to B, Blue or another name.">
             <input className="input" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required maxLength={20} />
           </Field>
         </div>

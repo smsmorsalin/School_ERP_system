@@ -5,6 +5,7 @@ from django.db import models
 from django.utils import timezone
 
 from apps.core.models import BaseModel
+from apps.finance.payment_gateways import GATEWAY_CHOICES
 
 
 class FeeCategory(BaseModel):
@@ -184,3 +185,140 @@ class Payment(BaseModel):
         invoice = self.invoice
         super().delete(*args, **kwargs)
         invoice.recalculate()
+
+
+class PaymentIntent(BaseModel):
+    """A short-lived, idempotent request to pay an invoice online.
+
+    The intent is deliberately *not* the ledger entry. Money only enters the
+    accounts when a verified gateway callback (or the sandbox simulator)
+    settles the intent and an atomic :class:`Payment` is created.
+    """
+
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("succeeded", "Succeeded"),
+        ("failed", "Failed"),
+        ("expired", "Expired"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    invoice = models.ForeignKey(
+        Invoice, on_delete=models.PROTECT, related_name="payment_intents"
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payment_intents",
+    )
+    intent_number = models.CharField(max_length=40, unique=True, blank=True)
+    gateway = models.CharField(max_length=30, choices=GATEWAY_CHOICES)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    currency = models.CharField(max_length=3, default="BDT")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    idempotency_key = models.CharField(max_length=128)
+    provider_reference = models.CharField(max_length=128, blank=True)
+    payer_reference = models.CharField(
+        max_length=64,
+        blank=True,
+        help_text="Masked wallet/card/bank reference supplied by the gateway.",
+    )
+    expires_at = models.DateTimeField()
+    completed_at = models.DateTimeField(null=True, blank=True)
+    failure_reason = models.CharField(max_length=255, blank=True)
+    settled_payment = models.OneToOneField(
+        Payment,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payment_intent",
+    )
+    metadata = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        db_table = "payment_intent"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "expires_at"]),
+            models.Index(fields=["invoice", "status"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["created_by", "idempotency_key"],
+                name="unique_payment_intent_idempotency",
+            )
+        ]
+        verbose_name = "Payment Intent"
+        verbose_name_plural = "Payment Intents"
+
+    def __str__(self):
+        return f"{self.intent_number} - {self.amount} {self.currency} ({self.status})"
+
+    @property
+    def is_expired(self) -> bool:
+        return self.status == "pending" and timezone.now() >= self.expires_at
+
+    def save(self, *args, **kwargs):
+        if not self.intent_number:
+            import secrets
+
+            self.intent_number = (
+                f"PAY-{timezone.now().strftime('%Y%m%d')}-"
+                f"{secrets.token_hex(4).upper()}"
+            )
+        super().save(*args, **kwargs)
+
+    def expire_if_needed(self) -> bool:
+        """Persist the expiry state so clients never see a stale intent."""
+        if not self.is_expired:
+            return False
+        self.status = "expired"
+        self.completed_at = timezone.now()
+        self.save(update_fields=["status", "completed_at", "updated_at"])
+        return True
+
+
+class PaymentWebhookEvent(BaseModel):
+    """Audit trail for gateway callbacks and replay/idempotency protection."""
+
+    STATUS_CHOICES = [
+        ("received", "Received"),
+        ("processed", "Processed"),
+        ("ignored", "Ignored"),
+        ("failed", "Failed"),
+    ]
+
+    gateway = models.CharField(max_length=30, choices=GATEWAY_CHOICES)
+    event_id = models.CharField(max_length=128)
+    event_type = models.CharField(max_length=50, blank=True)
+    intent = models.ForeignKey(
+        PaymentIntent,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="webhook_events",
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="received")
+    payload = models.JSONField(default=dict, blank=True)
+    payload_hash = models.CharField(max_length=64, blank=True)
+    signature_valid = models.BooleanField(default=False)
+    source_ip = models.GenericIPAddressField(null=True, blank=True)
+    error = models.CharField(max_length=255, blank=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "payment_webhook_event"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["gateway", "event_id"],
+                name="unique_payment_webhook_event",
+            )
+        ]
+        verbose_name = "Payment Webhook Event"
+        verbose_name_plural = "Payment Webhook Events"
+
+    def __str__(self):
+        return f"{self.gateway}:{self.event_id} ({self.status})"

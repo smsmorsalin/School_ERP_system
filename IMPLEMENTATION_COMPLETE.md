@@ -2,7 +2,7 @@
 
 **Status:** ✅ Complete
 **Stack:** Django 6.0.6 + DRF 3.16.1 (backend) · React 18 + Vite 5 (frontend)
-**Tests:** 70 passing (`pytest`)
+**Tests:** 103 passing (`pytest`)
 **Docs:** [README](README.md) · [ARCHITECTURE](ARCHITECTURE.md) ·
 [SETUP_GUIDE](SETUP_GUIDE.md) · [API_DOCUMENTATION](API_DOCUMENTATION.md)
 
@@ -31,6 +31,12 @@ This document summarises what was built and verified.
   attendance (bulk marking/summaries), exams (papers/results/publishing/report
   cards/analytics), finance (fee structures/invoices/payments/receipts), and
   communication (audience-targeted announcements with read receipts).
+- **Online fee payments** — students pay their own invoices and parents pay
+  linked children's invoices via bKash, Nagad, Rocket, other mobile banking,
+  card or bank transfer. Server-calculated row-locked amounts, per-user
+  idempotency, atomic settlement into the existing ledger, expiry/cancel,
+  sandbox confirmation, and HMAC-SHA256-signed timestamp-bounded webhooks with
+  event deduplication. Only masked payer references are stored.
 - **Role-aware dashboard** with charts data, global search and health check.
 - **Security hardening** — CSP/security headers, throttling, Pillow-validated
   image uploads (2 MB, allow-list), soft deletes, protected FKs, password
@@ -43,7 +49,12 @@ This document summarises what was built and verified.
 
 - 22 screens: dashboard, students, teachers, users, roles, classes, subjects,
   timetable, attendance, exams, results, invoices, fee setup, payments,
-  announcements, profile, change password, forgot/reset password, login, 404.
+  announcements, profile, change password, forgot/reset password, checkout,
+  login, 404.
+- Online payment UI: “Pay online” on student/parent invoices, grouped gateway
+  picker (mobile banking / card / bank), amount entry capped at the balance,
+  and a secure `/checkout/:uuid` page with sandbox pay/decline/cancel and
+  live-polling success/failure states.
 - Role-aware navigation and route guards with a friendly "no access" screen.
 - Custom SVG charts (fee collection, grade distribution, attendance trend).
 - Plain CSS design system with light/dark theme, responsive layout, toasts.
@@ -55,7 +66,10 @@ This document summarises what was built and verified.
 70 pytest tests covering authentication, lockout, refresh rotation/blacklist,
 token-version revocation, the forced-password gate, RBAC and IDOR protection,
 attendance bulk marking, exam publishing and report cards, finance atomicity,
-announcement audiences and image-upload validation.
+announcement audiences and image-upload validation — plus 25 online-payment
+tests covering ownership scoping, amount caps, idempotency, sandbox settlement,
+duplicate settlement, expiry, cancellation, declines, balance-change races and
+every signed-webhook rejection path (103 total).
 
 ---
 

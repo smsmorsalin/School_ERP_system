@@ -7,7 +7,15 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from apps.academics.models import AcademicYear, SchoolClass, Section, StudentProfile
-from apps.finance.models import FeeCategory, FeeStructure, Invoice, Payment
+from apps.finance.models import (
+    FeeCategory,
+    FeeStructure,
+    Invoice,
+    Payment,
+    PaymentIntent,
+)
+from apps.finance.payment_gateways import GATEWAY_CHOICES
+from apps.finance.payment_service import checkout_url_for
 
 
 class FeeCategorySerializer(serializers.ModelSerializer):
@@ -153,6 +161,97 @@ class InvoiceSerializer(serializers.ModelSerializer):
                 {"detail": "A fully paid invoice cannot be edited."}
             )
         return attrs
+
+
+class PaymentIntentInvoiceSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(source="student.user.get_full_name", read_only=True)
+    student_code = serializers.CharField(source="student.student_id", read_only=True)
+    balance = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    effective_status = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = Invoice
+        fields = [
+            "uuid", "invoice_number", "title", "student_name", "student_code",
+            "amount", "amount_paid", "balance", "due_date", "status",
+            "effective_status",
+        ]
+        read_only_fields = fields
+
+
+class PaymentIntentSerializer(serializers.ModelSerializer):
+    invoice = PaymentIntentInvoiceSerializer(read_only=True)
+    gateway_label = serializers.SerializerMethodField()
+    gateway_category = serializers.SerializerMethodField()
+    gateway_brand_color = serializers.SerializerMethodField()
+    checkout_url = serializers.SerializerMethodField()
+    payment = PaymentSerializer(source="settled_payment", read_only=True)
+    sandbox = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PaymentIntent
+        fields = [
+            "uuid", "intent_number", "invoice", "gateway", "gateway_label",
+            "gateway_category", "gateway_brand_color", "amount", "currency",
+            "status", "checkout_url", "sandbox", "provider_reference",
+            "payer_reference", "expires_at", "completed_at", "failure_reason",
+            "payment", "created_at",
+        ]
+        read_only_fields = fields
+
+    def to_representation(self, instance):
+        instance.expire_if_needed()
+        return super().to_representation(instance)
+
+    def _gateway(self, obj):
+        from apps.finance.payment_gateways import GATEWAY_BY_CODE
+
+        return GATEWAY_BY_CODE.get(obj.gateway, {})
+
+    def get_gateway_label(self, obj) -> str:
+        return self._gateway(obj).get("label", obj.gateway)
+
+    def get_gateway_category(self, obj) -> str:
+        return self._gateway(obj).get("category", "")
+
+    def get_gateway_brand_color(self, obj) -> str:
+        return self._gateway(obj).get("brand_color", "#4f46e5")
+
+    def get_checkout_url(self, obj) -> str:
+        return checkout_url_for(obj, self.context.get("request"))
+
+    def get_sandbox(self, obj) -> bool:
+        from django.conf import settings
+
+        return bool(settings.PAYMENT_SANDBOX)
+
+
+class PaymentIntentCreateSerializer(serializers.Serializer):
+    invoice = serializers.SlugRelatedField(
+        slug_field="uuid", queryset=Invoice.objects.all()
+    )
+    gateway = serializers.ChoiceField(choices=GATEWAY_CHOICES)
+    amount = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        min_value=Decimal("0.01"),
+        required=False,
+        allow_null=True,
+    )
+
+    def validate_amount(self, value):
+        if value is not None and value <= 0:
+            raise serializers.ValidationError("Amount must be greater than zero.")
+        return value
+
+
+class SandboxConfirmSerializer(serializers.Serializer):
+    outcome = serializers.ChoiceField(
+        choices=("succeeded", "failed"), default="succeeded"
+    )
+    payer_reference = serializers.CharField(
+        max_length=64, required=False, allow_blank=True
+    )
 
 
 class RecordPaymentSerializer(serializers.Serializer):

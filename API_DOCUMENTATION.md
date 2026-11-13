@@ -225,7 +225,7 @@ Role create/update body:
 | Endpoint | Notes |
 |---|---|
 | `/academics/academic-years/` | Academic years; `GET /academics/academic-years/current/` returns the current one |
-| `/academics/classes/` | School classes (Grade 1..12) |
+| `/academics/classes/` | School classes (Class 1..12) |
 | `/academics/sections/` | Sections; `GET /sections/my-classes/` for teachers; `GET /sections/{uuid}/roster/` for students in the section |
 | `/academics/subjects/` | Subjects (name, code, credits) |
 | `/academics/class-subjects/` | Class-subject-teacher assignments |
@@ -339,6 +339,12 @@ own report; parents only for linked children.
 | `/finance/fee-structures/` | Per-class fee definitions (admin/accountant) |
 | `/finance/invoices/` | Invoices; `POST /invoices/generate/`, `POST /invoices/{uuid}/payments/`, `POST /invoices/{uuid}/cancel/`, `GET /invoices/{uuid}/receipt/` |
 | `/finance/payments/` | Payments; `GET /payments/summary/` |
+| `/finance/payment-gateways/` | Enabled online-payment methods + currency/sandbox flags |
+| `/finance/payment-intents/` | Create/list online checkout sessions (`Idempotency-Key` required on create) |
+| `/finance/payment-intents/{uuid}/` | Poll a checkout session |
+| `/finance/payment-intents/{uuid}/sandbox-confirm/` | Complete a sandbox payment |
+| `/finance/payment-intents/{uuid}/cancel/` | Cancel a pending checkout |
+| `/finance/payment-webhook/{gateway}/` | Public signed provider callback |
 
 Teachers get `403` on all finance reads and writes. Students/parents see only
 their own invoices/payments.
@@ -376,6 +382,126 @@ paying beyond the remaining balance are rejected. The invoice's
 recalculates them back.
 
 `method` ∈ `cash | card | bank` (see `finance/models`).
+
+---
+
+## Online fee payments
+
+Students pay their own invoices; parents pay invoices of linked children. Admins
+and accountants can read every intent but cannot create one on a student's
+behalf through this API.
+
+### `GET /finance/payment-gateways/`
+
+Returns the methods the UI may offer:
+
+```json
+{
+  "enabled": true,
+  "sandbox": true,
+  "currency": "BDT",
+  "intent_ttl_minutes": 30,
+  "gateways": [
+    {
+      "code": "bkash",
+      "label": "bKash",
+      "category": "mobile_banking",
+      "category_label": "Mobile banking",
+      "description": "Pay from your bKash mobile wallet.",
+      "brand_color": "#e2136e",
+      "initials": "bK"
+    }
+  ]
+}
+```
+
+Gateway `code`s: `bkash`, `nagad`, `rocket`, `mobile_banking`, `card`, `bank`.
+When `enabled` is `false`, `gateways` is empty and the UI hides checkout.
+
+### `POST /finance/payment-intents/`
+
+Headers: `Idempotency-Key: <8–128 safe characters>` (required).
+
+```json
+{
+  "invoice": "<invoice uuid>",
+  "gateway": "bkash",
+  "amount": "250.00"
+}
+```
+
+`amount` is optional; omitting it pays the full outstanding balance. The server
+always re-validates against the locked invoice row. Responses:
+
+- `201` — new intent; body includes `uuid`, `intent_number`, `amount`,
+  `currency`, `status`, `checkout_url`, `sandbox`, `expires_at`.
+- `200` — replay of the same key/details (`Idempotency-Replayed: true`).
+- `409` — the key was reused with different invoice/gateway/amount.
+- `400` — invalid amount, cancelled/paid invoice, or missing header.
+- `404` — invoice not visible to the caller (no enumeration).
+
+### `GET /finance/payment-intents/` · `GET /finance/payment-intents/{uuid}/`
+
+List or poll a checkout session. Students/parents only see intents they created
+for invoices they can access.
+
+### `POST /finance/payment-intents/{uuid}/sandbox-confirm/`
+
+Sandbox only (`403` when `PAYMENT_SANDBOX=False`).
+
+```json
+{ "outcome": "succeeded", "payer_reference": "01712345678" }
+```
+
+`outcome` ∈ `succeeded | failed`. Success atomically creates the ledger
+`Payment`, recalculates the invoice and returns the intent with `payment`.
+Declining leaves the invoice untouched. Re-confirming a settled intent is
+idempotent and cannot double-charge.
+
+### `POST /finance/payment-intents/{uuid}/cancel/`
+
+Cancels a pending intent. Any later confirmation returns `409`.
+
+### `POST /finance/payment-webhook/{gateway}/`
+
+Public (no JWT). Required headers:
+
+| Header | Meaning |
+|---|---|
+| `X-Payment-Signature` | `HMAC-SHA256(PAYMENT_WEBHOOK_SECRET, raw_body)` hex (optionally `sha256=` prefixed) |
+| `X-Payment-Timestamp` | Unix seconds; rejected outside `PAYMENT_WEBHOOK_TOLERANCE_SECONDS` (default 300) |
+
+```json
+{
+  "event_id": "evt_001",
+  "event_type": "payment.succeeded",
+  "intent": "<intent uuid>",
+  "status": "succeeded",
+  "amount": "250.00",
+  "currency": "BDT",
+  "provider_reference": "TRX-998877",
+  "payer_reference": "01712345678"
+}
+```
+
+- `200 processed` — settled (or marked failed for `status: failed`).
+- `200 duplicate` — `event_id` already processed; no second payment.
+- `200 ignored` — unknown intent or non-actionable status.
+- `400` — malformed payload, missing amount, or amount/currency mismatch.
+- `401` — bad signature or stale timestamp. `503` if payments are disabled or
+  the secret is unset.
+
+### Security properties
+
+- Amounts are server-calculated and capped by the invoice balance.
+- Invoice rows are locked during creation and settlement.
+- Idempotency is unique per `(user, key)`.
+- Webhooks are HMAC-verified over the raw body, timestamp-bounded and
+  deduplicated by `(gateway, event_id)`.
+- Only masked payer references (`*******5678`) and provider references are kept;
+  card numbers, PINs, OTPs and wallet passwords are never stored.
+- Both create and webhook endpoints are rate-limited (`payment_intent`,
+  `payment_webhook` scopes).
 
 ---
 

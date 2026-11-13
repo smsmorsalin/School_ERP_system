@@ -51,11 +51,34 @@ Edit `.env`. The most important keys:
 | `ALLOW_PUBLIC_REGISTRATION` | `False`              | `False`                                  |
 | `TIME_ZONE`               | `Asia/Dhaka`           | `Asia/Dhaka`                             |
 | `EMAIL_BACKEND`           | console                | SMTP settings (see below)                |
+| `PAYMENT_ONLINE_ENABLED`  | `True`                 | `False` until configured, then `True`    |
+| `PAYMENT_SANDBOX`         | `True`                 | `False` (required; production refuses `True`) |
+| `PAYMENT_WEBHOOK_SECRET`  | empty (sandbox)        | ≥32 random characters                    |
+| `PAYMENT_LIVE_CHECKOUT_BASE` | empty (sandbox)     | HTTPS hosted-checkout URL from the provider |
+| `PAYMENT_INTENT_TTL_MINUTES` | `30`                | `30` (5–120)                             |
 
 > **Production hard-fail checks** — with `DEBUG=False` the app refuses to start
 > if `SECRET_KEY` is missing/short, `ALLOWED_HOSTS` is empty or `*`, any
 > `FRONTEND_URL`/CORS/CSRF origin is not HTTPS, or `AUTH_COOKIE_SECURE` is not
-> `True`. This makes an insecure deployment fail loudly instead of silently.
+> `True`. Under production settings it also refuses to start if
+> `PAYMENT_SANDBOX=True`, or if online payments are enabled without a ≥32-char
+> `PAYMENT_WEBHOOK_SECRET` and an HTTPS `PAYMENT_LIVE_CHECKOUT_BASE`. This makes
+> an insecure deployment fail loudly instead of silently.
+
+### Online fee payments
+
+Out of the box the project runs the **sandbox** adapter: students and parents
+can click **Pay online**, choose bKash/Nagad/Rocket/other mobile banking/card/
+bank, and complete a simulated checkout at `/checkout/:uuid`. No real money
+moves and no merchant account is needed — ideal for demos and testing.
+
+To go live you need real provider credentials. Set `PAYMENT_SANDBOX=False`, a
+strong `PAYMENT_WEBHOOK_SECRET`, `PAYMENT_LIVE_CHECKOUT_BASE` and
+`PAYMENT_ONLINE_ENABLED=True`, then register the webhook URL
+`https://<domain>/api/v1/finance/payment-webhook/<gateway>/` with each provider.
+See [DEPLOYMENT.md](DEPLOYMENT.md#online-fee-payments) for the full checklist.
+The provider-specific request/response adapters in
+`backend/apps/finance/` still need to be completed for each live gateway.
 
 ### Email (production)
 
@@ -134,7 +157,7 @@ npm run build
 
 ```bash
 cd backend
-.venv/bin/python -m pytest          # 70 tests
+.venv/bin/python -m pytest          # 103 tests
 .venv/bin/python -m pytest -v       # verbose
 .venv/bin/python -m pytest tests/test_auth.py   # one file
 ```

@@ -102,6 +102,63 @@ container-specific ones:
 | `AUTH_COOKIE_SECURE` | Must be `True` in production |
 | `RUN_MIGRATIONS` | `1` only for single-instance/Compose; use a Job in K8s |
 | `WEB_CONCURRENCY` / `GUNICORN_THREADS` | Gunicorn tuning |
+| `PAYMENT_ONLINE_ENABLED` | `True` only after online payments are configured |
+| `PAYMENT_SANDBOX` | `True` for local/compose demos; **must be `False` in production** |
+| `PAYMENT_WEBHOOK_SECRET` | ≥32 random characters; required for live webhooks |
+| `PAYMENT_LIVE_CHECKOUT_BASE` | HTTPS hosted-checkout URL from the payment partner |
+| `PAYMENT_INTENT_TTL_MINUTES` | Checkout lifetime, 5–120 (default 30) |
+| `PAYMENT_WEBHOOK_TOLERANCE_SECONDS` | Accepted webhook clock skew, 30–3600 (default 300) |
+
+---
+
+## Online fee payments
+
+The application ships with a provider-agnostic payment gateway catalogue and two
+adapters:
+
+1. **Sandbox** — `PAYMENT_SANDBOX=True`. The browser is sent to the in-app
+   `/checkout/{uuid}` page, which simulates the provider's hosted page (pay or
+   decline). This is the default for development and Docker Compose and never
+   moves real money. It is impossible under production settings.
+2. **Live** — `PAYMENT_SANDBOX=False`. The browser is redirected to
+   `PAYMENT_LIVE_CHECKOUT_BASE` (your payment partner's HTTPS hosted checkout).
+   The invoice is only marked paid when the partner sends a signed webhook to
+   `/api/v1/finance/payment-webhook/{gateway}/`.
+
+No card numbers, PINs, OTPs or mobile-banking credentials are ever sent to or
+stored by this application. Only the provider transaction reference and a masked
+payer reference are retained for reconciliation.
+
+### Enable live payments (checklist)
+
+- [ ] Complete merchant onboarding with each provider (bKash, Nagad, Rocket,
+      card acquirer, bank) and obtain hosted-checkout + webhook credentials.
+- [ ] Set a unique `PAYMENT_WEBHOOK_SECRET` of at least 32 random characters and
+      configure the same value with the provider.
+- [ ] Set `PAYMENT_LIVE_CHECKOUT_BASE` to the partner's HTTPS checkout URL.
+- [ ] Keep `PAYMENT_SANDBOX=False` and `PAYMENT_ONLINE_ENABLED=True` in the
+      ConfigMap/Secret, then redeploy.
+- [ ] Register the webhook URL
+      `https://<your-domain>/api/v1/finance/payment-webhook/<gateway>/` with the
+      provider and confirm its signatures match
+      `HMAC-SHA256(PAYMENT_WEBHOOK_SECRET, raw_body)`.
+- [ ] Confirm HTTPS is enforced end-to-end and that the webhook path is reachable
+      through the Ingress.
+- [ ] Run a low-value live transaction and verify the invoice settles exactly
+      once, then replay the webhook and confirm the duplicate is ignored.
+
+`config.settings.production` refuses to start if `PAYMENT_SANDBOX=True`, or if
+online payments are enabled without a strong secret and an HTTPS checkout base.
+
+### Provider adapter work
+
+The sandbox proves the full lifecycle. Before going live you must add the
+provider-specific request/response mapping inside
+`backend/apps/finance/payment_gateways.py` and
+`backend/apps/finance/payment_service.py` (where the hosted-checkout URL is
+built and webhook payloads are interpreted). The settlement, idempotency,
+locking, masking and signature-verification layers are already implemented and
+tested.
 
 ---
 
@@ -342,6 +399,9 @@ kubectl -n school-erp exec deploy/school-erp-postgres -- \
 - [ ] `DEBUG=False` (the production settings module enforces this).
 - [ ] Public registration stays disabled unless explicitly required.
 - [ ] Demo seeding is **off**.
+- [ ] `PAYMENT_SANDBOX=False`; online payments are either disabled or fully
+      configured with a strong webhook secret and HTTPS checkout base.
+- [ ] Gateway webhooks are registered and signature verification is tested.
 - [ ] Database and media backups are configured and restore-tested.
 - [ ] Network policies restrict database/cache access.
 - [ ] Container images are pinned by tag/digest and scanned.

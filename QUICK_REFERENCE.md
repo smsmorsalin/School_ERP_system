@@ -24,8 +24,20 @@ cd ../frontend && npm install && npm run dev
 ## Tests
 
 ```bash
-cd backend && .venv/bin/python -m pytest        # 70 tests
+cd backend && .venv/bin/python -m pytest        # 103 tests
 ```
+
+## Online fee payments (sandbox)
+
+```bash
+# enabled by default in development: click Invoices → Pay online
+# student pays own bills; parent pays linked children's bills
+# methods: bKash, Nagad, Rocket, other mobile banking, card, bank
+# checkout route: /checkout/:uuid  (simulated, no real money)
+```
+
+Live mode requires `PAYMENT_SANDBOX=False`, a strong `PAYMENT_WEBHOOK_SECRET`
+and an HTTPS `PAYMENT_LIVE_CHECKOUT_BASE` — see `DEPLOYMENT.md`.
 
 ## Demo accounts
 

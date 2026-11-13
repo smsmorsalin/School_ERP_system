@@ -25,7 +25,9 @@ students.
 - **Examinations** — exam and paper setup, mark entry, publishing, grade bands,
   report cards with rank, and analytics.
 - **Finance** — fee categories and structures, bulk invoice generation, partial
-  payments, receipts, and collection summaries.
+  payments, receipts, collection summaries, and **secure online fee payments**
+  (bKash, Nagad, Rocket, other mobile banking, cards and bank transfer) for
+  students and parents.
 - **Communication** — role/class-targeted announcements with read receipts.
 - **Dashboard** — role-aware overview with charts and a global search.
 - **Security** — see [Security](#-security) below.
@@ -40,7 +42,7 @@ students.
 | Database  | SQLite (development), PostgreSQL (production) via `psycopg` 3.2.9           |
 | Frontend  | React 18.3.1, react-router-dom 6.26.2, lucide-react 0.451.0                 |
 | Frontend  | Vite 5.4.8, plain CSS (custom design system)                                |
-| Testing   | pytest 8.4.2, pytest-django 4.11.1 (70 tests)                               |
+| Testing   | pytest 8.4.2, pytest-django 4.11.1 (103 tests)                              |
 
 ## 📁 Project Structure
 
@@ -53,11 +55,12 @@ School_ERP_system/
 │   │   ├── academics/          # Classes, sections, subjects, profiles, timetable
 │   │   ├── attendance/         # Daily attendance, bulk marking, summaries
 │   │   ├── exams/              # Exams, papers, results, report cards, analytics
-│   │   ├── finance/            # Fee structures, invoices, payments, receipts
+│   │   ├── finance/            # Fee structures, invoices, payments, receipts,
+│   │   │                       #   online payment intents and signed webhooks
 │   │   ├── communication/      # Targeted announcements and read receipts
 │   │   ├── dashboard/          # Role-aware overview and global search
 │   │   └── core/               # Base models, RBAC, pagination, middleware, SPA
-│   ├── tests/                  # pytest suite (70 tests)
+│   ├── tests/                  # pytest suite (103 tests)
 │   ├── manage.py
 │   ├── requirements.txt
 │   └── .env.example
@@ -124,6 +127,31 @@ teachers, guardians, invoices and published exams). All demo passwords are
 | Student     | `student@school.example`   | `Student@12345`|
 | Parent      | `parent@school.example`    | `Parent@12345` |
 
+## 💳 Online Fee Payments
+
+Students and parents can settle an invoice online from **Invoices → Pay online**.
+The checkout offers bKash, Nagad, Rocket, other mobile banking, debit/credit
+cards and bank transfer.
+
+- **Students** pay their own invoices; **parents** pay any linked child's invoice.
+- Amounts are always calculated and validated on the server; a partial payment
+  is allowed and cannot exceed the outstanding balance.
+- The UI uses the gateway catalogue from
+  `GET /api/v1/finance/payment-gateways/`, so new methods can be enabled without
+  a frontend release.
+- **Sandbox mode** (`PAYMENT_SANDBOX=True`, default in development/compose)
+  simulates the hosted gateway page so the complete flow is testable with no
+  merchant credentials and no real money.
+- **Live mode** redirects to the HTTPS hosted-checkout URL supplied by your
+  payment partner (`PAYMENT_LIVE_CHECKOUT_BASE`) and settles only when the
+  provider's signed webhook confirms the transaction.
+- **No card numbers, PINs, OTPs or mobile-banking passwords are stored** — only
+  the gateway transaction reference and a masked payer reference.
+
+Online payments are **disabled by default in production** until merchant
+credentials, a webhook secret and a live checkout URL are configured. See
+[DEPLOYMENT.md](DEPLOYMENT.md#online-fee-payments) for the enablement checklist.
+
 ## 🐳 Docker & Kubernetes
 
 The project ships a production-ready, multi-stage container image and a
@@ -155,13 +183,15 @@ See **[DEPLOYMENT.md](DEPLOYMENT.md)** for the full guide and
 
 ```bash
 cd backend
-.venv/bin/python -m pytest        # 70 tests, all green
+.venv/bin/python -m pytest        # 103 tests, all green
 ```
 
 The suite covers authentication, account lockout, JWT rotation/blacklisting,
 token-version revocation, the forced-password gate, RBAC and IDOR protection,
-attendance bulk marking, exam publishing, finance atomicity and image-upload
-validation.
+attendance bulk marking, exam publishing, finance atomicity, image-upload
+validation, and online-payment security (ownership scoping, amount caps,
+idempotency, sandbox settlement, expiry/cancellation, and signed webhook
+verification).
 
 ## 🔐 Security
 
@@ -223,7 +253,7 @@ All endpoints are under `/api/v1/` and use UUID lookup. Paginated responses use:
 | Academics     | `academics/` (years, classes, sections, subjects, students, teachers, timetable) |
 | Attendance    | `attendance/` (+ `bulk`, `sheet`, `summary`, `today`) |
 | Exams         | `exams/`, `exam-subjects/`, `exam-results/` |
-| Finance       | `finance/` (fee-categories, fee-structures, invoices, payments) |
+| Finance       | `finance/` (fee-categories, fee-structures, invoices, payments, payment-gateways, payment-intents, payment-webhook) |
 | Communication | `announcements/`                        |
 | Dashboard     | `dashboard/overview`, `dashboard/search`, `health` |
 
@@ -239,5 +269,6 @@ All endpoints are under `/api/v1/` and use UUID lookup. Paginated responses use:
 - **Version:** 1.0.0
 - **Status:** ✅ Complete — backend + frontend + tests + docs
 - **Roles:** Admin, Teacher, Accountant, Student, Parent
-- **Tests:** 70 passing
+- **Tests:** 103 passing
+- **Online payments:** Sandbox-ready; live mode requires provider credentials
 - **License:** MIT

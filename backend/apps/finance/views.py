@@ -3,27 +3,49 @@
 from datetime import date, timedelta
 from decimal import Decimal
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Count, Q, Sum
 from django.db.models.functions import TruncMonth
 from django.utils import timezone
-from rest_framework import status, viewsets
+from rest_framework import mixins, status, views, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 
 from apps.academics.access import children_of, student_profile_of
 from apps.academics.models import StudentProfile
+from apps.core.exceptions import ServiceUnavailable
 from apps.core.permissions import CanViewFinance, IsAccountantOrAdmin, is_admin
+from apps.core.utils import get_client_ip
 from apps.finance.filters import FeeStructureFilter, InvoiceFilter, PaymentFilter
-from apps.finance.models import FeeCategory, FeeStructure, Invoice, Payment
+from apps.finance.models import (
+    FeeCategory,
+    FeeStructure,
+    Invoice,
+    Payment,
+    PaymentIntent,
+)
+from apps.finance.payment_gateways import gateway_catalogue
+from apps.finance.payment_service import (
+    create_payment_intent,
+    fail_payment_intent,
+    process_webhook,
+    sandbox_reference,
+    settle_payment_intent,
+)
 from apps.finance.serializers import (
     FeeCategorySerializer,
     FeeStructureSerializer,
     InvoiceGenerateSerializer,
     InvoiceSerializer,
+    PaymentIntentCreateSerializer,
+    PaymentIntentSerializer,
     PaymentSerializer,
     RecordPaymentSerializer,
+    SandboxConfirmSerializer,
 )
 
 
@@ -47,6 +69,17 @@ def accessible_payments(user):
     if "Parent" in getattr(user, "role_names", []):
         return qs.filter(invoice__student__in=children_of(user))
     return qs.none()
+
+
+def accessible_payment_intents(user):
+    qs = PaymentIntent.objects.select_related(
+        "invoice__student__user", "settled_payment", "created_by"
+    )
+    if is_admin(user) or "Accountant" in getattr(user, "role_names", []):
+        return qs
+    # Students and parents only see intents they created for invoices they can
+    # access. They can never inspect another family member's checkout session.
+    return qs.filter(invoice__in=accessible_invoices(user), created_by=user)
 
 
 class FeeCategoryViewSet(viewsets.ModelViewSet):
@@ -267,3 +300,164 @@ class PaymentViewSet(viewsets.ModelViewSet):
                 "range_days": days,
             }
         )
+
+
+class PaymentGatewayListView(views.APIView):
+    """Public gateway metadata for the student/parent checkout UI."""
+
+    permission_classes = [CanViewFinance]
+
+    def get(self, request):
+        enabled = bool(settings.PAYMENT_ONLINE_ENABLED)
+        return Response(
+            {
+                "enabled": enabled,
+                "sandbox": bool(settings.PAYMENT_SANDBOX),
+                "currency": settings.PAYMENT_CURRENCY,
+                "intent_ttl_minutes": settings.PAYMENT_INTENT_TTL_MINUTES,
+                "gateways": (
+                    gateway_catalogue(sandbox=settings.PAYMENT_SANDBOX)
+                    if enabled
+                    else []
+                ),
+            }
+        )
+
+
+class PaymentIntentViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet,
+):
+    """Idempotent online payment intents for invoices."""
+
+    permission_classes = [CanViewFinance]
+    lookup_field = "uuid"
+    ordering = ["-created_at"]
+    throttle_scope = "payment_intent"
+
+    def get_throttles(self):
+        # Polling the checkout status must not consume the strict creation
+        # budget, so only mutations use the scoped throttle.
+        if self.action in ("create", "sandbox_confirm", "cancel"):
+            return [ScopedRateThrottle()]
+        return super().get_throttles()
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return PaymentIntent.objects.none()
+        return accessible_payment_intents(self.request.user)
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return PaymentIntentCreateSerializer
+        if self.action == "sandbox_confirm":
+            return SandboxConfirmSerializer
+        return PaymentIntentSerializer
+
+    def create(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        invoice = serializer.validated_data["invoice"]
+
+        if not accessible_invoices(request.user).filter(pk=invoice.pk).exists():
+            # Do not reveal whether another family's invoice exists.
+            raise NotFound("Invoice not found.")
+
+        intent, created = create_payment_intent(
+            user=request.user,
+            invoice=invoice,
+            gateway=serializer.validated_data["gateway"],
+            amount=serializer.validated_data.get("amount"),
+            idempotency_key=request.headers.get("Idempotency-Key", ""),
+        )
+        output = PaymentIntentSerializer(
+            intent, context={"request": request}
+        )
+        response = Response(
+            output.data,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+        if not created:
+            response["Idempotency-Replayed"] = "true"
+        return response
+
+    @action(detail=True, methods=["post"], url_path="sandbox-confirm")
+    def sandbox_confirm(self, request, uuid=None):
+        if not settings.PAYMENT_ONLINE_ENABLED:
+            raise ServiceUnavailable("Online fee payments are currently disabled.")
+        if not settings.PAYMENT_SANDBOX:
+            raise PermissionDenied(
+                "Sandbox payments are disabled. Complete the payment on the gateway page."
+            )
+
+        intent = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        if serializer.validated_data["outcome"] == "failed":
+            fail_payment_intent(intent, "Sandbox payment declined by the payer.")
+        else:
+            settle_payment_intent(
+                intent,
+                provider_reference=sandbox_reference(),
+                payer_reference=serializer.validated_data.get("payer_reference", ""),
+                source="sandbox",
+            )
+
+        intent.refresh_from_db()
+        refresh = PaymentIntentSerializer(intent, context={"request": request})
+        return Response(refresh.data)
+
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, uuid=None):
+        intent = self.get_object()
+        if intent.status != "pending":
+            raise ValidationError(
+                {"detail": f"This payment intent is already {intent.status}."}
+            )
+        intent.status = "cancelled"
+        intent.completed_at = timezone.now()
+        intent.failure_reason = "Cancelled by the payer."
+        intent.save(
+            update_fields=["status", "completed_at", "failure_reason", "updated_at"]
+        )
+        return Response(
+            PaymentIntentSerializer(intent, context={"request": request}).data
+        )
+
+
+class PaymentWebhookView(views.APIView):
+    """Gateway callback endpoint.
+
+    It is intentionally unauthenticated (gateways cannot hold a JWT) but every
+    request must carry a valid HMAC-SHA256 signature over the raw body and a
+    fresh timestamp. Replayed event ids are deduplicated.
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "payment_webhook"
+
+    def post(self, request, gateway):
+        import json
+
+        raw_body = request.body
+        try:
+            payload = json.loads(raw_body.decode("utf-8") or "{}")
+        except (ValueError, UnicodeDecodeError):
+            return Response(
+                {"detail": "Invalid JSON payload."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        status_code, body = process_webhook(
+            gateway=gateway,
+            payload=payload,
+            raw_body=raw_body,
+            signature=request.headers.get("X-Payment-Signature", ""),
+            timestamp=request.headers.get("X-Payment-Timestamp", ""),
+            source_ip=get_client_ip(request),
+        )
+        return Response(body, status=status_code)

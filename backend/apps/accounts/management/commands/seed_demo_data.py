@@ -76,7 +76,7 @@ class Command(BaseCommand):
 
         # -- classes and sections -----------------------------------------
         classes = {}
-        for level, name in [(6, "Grade 6"), (7, "Grade 7"), (8, "Grade 8")]:
+        for level, name in [(1, "Class 1"), (2, "Class 2"), (3, "Class 3")]:
             school_class, _ = SchoolClass.objects.get_or_create(
                 level=level, defaults={"name": name}
             )
@@ -87,7 +87,7 @@ class Command(BaseCommand):
 
         sections = {}
         for level, school_class in classes.items():
-            for section_name in ("A", "B"):
+            for section_name in ("A",):
                 section, _ = Section.objects.get_or_create(
                     school_class=school_class,
                     name=section_name,
@@ -204,7 +204,7 @@ class Command(BaseCommand):
                 first = FIRST_NAMES[counter % len(FIRST_NAMES)]
                 last = LAST_NAMES[counter % len(LAST_NAMES)]
                 email = f"student{counter + 1}@school.example"
-                is_demo_student = (level, section_name, roll) == (6, "A", 1)
+                is_demo_student = (level, section_name, roll) == (1, "A", 1)
                 if is_demo_student:
                     email = "student@school.example"
                 user = self._user(

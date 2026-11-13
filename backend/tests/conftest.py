@@ -12,7 +12,9 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
+from django.core.cache import cache
 from rest_framework.test import APIClient
+from rest_framework.throttling import SimpleRateThrottle
 
 from apps.academics.models import (
     AcademicYear,
@@ -49,6 +51,11 @@ def _test_settings(settings):
         **settings.REST_FRAMEWORK,
         "DEFAULT_THROTTLE_RATES": rates,
     }
+    # SimpleRateThrottle caches api_settings at import time. Point it at the
+    # relaxed test rates and clear the per-IP counters so one test cannot
+    # throttle the next one (the login scope is intentionally strict in prod).
+    SimpleRateThrottle.THROTTLE_RATES = rates
+    cache.clear()
     return settings
 
 

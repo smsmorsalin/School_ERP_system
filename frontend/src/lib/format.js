@@ -1,11 +1,13 @@
-export const CURRENCY = "$";
+export const CURRENCY = "৳";
+export const CURRENCY_CODE = "BDT";
 
 export function money(value, opts = {}) {
   const number = Number(value ?? 0);
-  return `${CURRENCY}${number.toLocaleString(undefined, {
+  const formatted = number.toLocaleString(undefined, {
     minimumFractionDigits: opts.decimals ?? 2,
     maximumFractionDigits: opts.decimals ?? 2,
-  })}`;
+  });
+  return opts.code ? `${CURRENCY_CODE} ${formatted}` : `${CURRENCY}${formatted}`;
 }
 
 export function compactMoney(value) {
@@ -103,6 +105,7 @@ export function statusTone(status) {
     present: "green",
     paid: "green",
     success: "green",
+    succeeded: "green",
     published: "green",
     partial: "amber",
     late: "amber",
@@ -117,6 +120,7 @@ export function statusTone(status) {
     suspended: "red",
     graduated: "violet",
     transferred: "neutral",
+    expired: "neutral",
   };
   return map[status] || "neutral";
 }

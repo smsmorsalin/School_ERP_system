@@ -16,8 +16,8 @@ The project is a **full-stack School ERP / school management system**:
 
 - **Backend:** Django 6 + Django REST Framework, JWT auth, role-based access control (RBAC), SQLite in development / PostgreSQL for production.
 - **Frontend:** React 18 + Vite 5 single-page app (plain CSS, `lucide-react` icons, custom SVG charts), built into `frontend/dist` and served by Django.
-- **Status:** Feature-complete for the original scope. **70 automated tests pass.** All five roles have been smoke-tested in a real browser. Security hardening is implemented and verified.
-- **What remains:** mostly optional polish, deployment setup, and documentation review. See §5.
+- **Status:** Feature-complete for the original scope plus **secure online fee payments** (bKash, Nagad, Rocket, other mobile banking, card, bank). **103 automated tests pass.** All five roles have been smoke-tested in a real browser, and the payment backend is fully covered by tests. Security hardening is implemented and verified.
+- **What remains:** optional polish, live provider adapters (needs merchant credentials), and deployment on real infrastructure. See §5.
 
 **If you are an AI resuming this project:** run §2 (setup), run §8 (tests),
 then pick the highest-priority unchecked item in §5. Do **not** rebuild finished
@@ -65,7 +65,7 @@ School_ERP_system/
 │   │   ├── finance/           ← fee categories/structures, invoices, payments
 │   │   ├── communication/     ← announcements + read tracking
 │   │   └── dashboard/         ← role-aware overview, global search, health
-│   ├── tests/                 ← 70 pytest tests (conftest + 7 modules)
+│   ├── tests/                 ← 103 pytest tests (conftest + 8 modules)
 │   ├── staticfiles/
 │   └── media/
 └── frontend/
@@ -187,6 +187,13 @@ timetable, attendance, exams/results, invoices/payments and announcements.
       with rank, analytics, grade utilities.
 - [x] Finance: fee categories, fee structures, invoices, atomic payment
       recording, invoice generation, summaries, receipts.
+- [x] **Online fee payments** for students/parents: provider-agnostic gateway
+      catalogue (bKash, Nagad, Rocket, other mobile banking, card, bank),
+      `PaymentIntent` checkout lifecycle, idempotent creation, row-locked
+      settlement into the existing `Payment` ledger, expiry/cancel, sandbox
+      confirmation, and HMAC-SHA256-signed timestamp-bounded webhooks with event
+      deduplication. Only masked payer references and provider references are
+      stored; no card numbers/PINs/OTPs are ever persisted.
 - [x] Communication: announcements with audience scoping, read/unread tracking,
       mark-all-read.
 - [x] Dashboard: role-aware overview, global search, health endpoint.
@@ -197,8 +204,10 @@ timetable, attendance, exams/results, invoices/payments and announcements.
 - [x] Django admin configured for all major models.
 - [x] Production settings hard-fail on: weak/short `SECRET_KEY`, missing or
       wildcard `ALLOWED_HOSTS`, non-HTTPS `FRONTEND_URL`/CORS/CSRF origins,
-      insecure refresh cookie. Schema/docs are admin-only in production.
-- [x] 70-test pytest suite — **all passing** (`cd backend && .venv/bin/python -m pytest -q`).
+      insecure refresh cookie, `PAYMENT_SANDBOX=True`, or live payments enabled
+      without a strong webhook secret and HTTPS checkout base. Schema/docs are
+      admin-only in production.
+- [x] 103-test pytest suite — **all passing** (`cd backend && .venv/bin/python -m pytest -q`).
 
 ### 4.2 Frontend
 
@@ -207,7 +216,11 @@ timetable, attendance, exams/results, invoices/payments and announcements.
 - [x] Forced-password-change redirect (`/change-password`).
 - [x] Role-aware navigation (each role sees only permitted modules).
 - [x] Toasts, modals, tables, empty/loading/error states, custom SVG charts.
-- [x] `npm run build` succeeds (Vite, ~1600 modules).
+- [x] Online payments UI: “Pay online” on student/parent invoices, gateway
+      selection grouped by mobile banking / card / bank, amount entry capped at
+      the balance, and a `/checkout/:uuid` page with sandbox pay/decline/cancel,
+      live polling, success/failure states and BDT (`৳`) formatting.
+- [x] `npm run build` succeeds with the payment UI (Vite, 1606 modules).
 - [x] Browser-tested flows: admin (dashboard/users/roles/profile), teacher
       (attendance/exams/results + role guard), accountant (fees/invoices/
       payments), student (dashboard/results/invoices/attendance + role guard),
@@ -230,10 +243,21 @@ before and after changing it.
 
 ### P0 — must verify on resume (do first, ~10 minutes)
 
-- [ ] Run the backend test suite (§8) and confirm **70 passed**.
+- [x] Run the backend test suite (§8) and confirm **103 passed**.
+- [x] Run `npm install && npm run build` in `frontend/` — the build succeeds
+      (1606 modules) and `frontend/dist` now contains the payment UI.
+- [x] End-to-end verified over real HTTP against the dev server: student login →
+      gateway catalogue (all six methods) → intent create → idempotent replay
+      (`200`, same uuid) → key reuse with different gateway (`409`) → poll →
+      sandbox confirm (receipt created, payer masked `*******5678`) → duplicate
+      confirm (still one payment) → invoice `paid`, balance `0.00` → unsigned
+      webhook rejected (`503`) → SPA `/checkout/<uuid>` returns the app shell.
 - [ ] Start the server, open `/login`, sign in as admin, confirm the dashboard loads.
 - [ ] Confirm `manage.py check` reports no issues.
 - [ ] Run `makemigrations --check --dry-run` and confirm **no changes detected**.
+- [ ] Confirm the payment env vars are present in `.env.compose.example`,
+      `docker-compose.yml`, `deploy/k8s/configmap.yaml` and
+      `deploy/k8s/secret.example.yaml`.
 
 ### P1 — documentation review (mostly written, needs a pass)
 
@@ -274,7 +298,7 @@ before and after changing it.
 
 ### P4 — production & DevOps
 
-- [ ] Add `Dockerfile` + `docker-compose.yml` (Django + PostgreSQL + nginx).
+- [x] Add `Dockerfile` + `docker-compose.yml` (Django + PostgreSQL + nginx).
 - [ ] Add CI (GitHub Actions) running `pytest` + `npm run build` + `ruff`.
 - [ ] Switch production to PostgreSQL and confirm migrations.
 - [ ] Configure real email backend (SMTP) for password-reset mail.
@@ -283,6 +307,10 @@ before and after changing it.
 - [ ] Add database + media backups and a restore procedure.
 - [ ] Structured logging / error monitoring (e.g. Sentry) and log rotation.
 - [ ] Load-test login/refresh and list endpoints before go-live.
+- [ ] **Live online payments:** complete merchant onboarding, implement the
+      provider-specific request/response adapters, set `PAYMENT_WEBHOOK_SECRET`
+      and `PAYMENT_LIVE_CHECKOUT_BASE`, register the webhook URL, and run a
+      low-value live transaction plus a replay check.
 
 ### P5 — QA
 
@@ -318,6 +346,7 @@ before and after changing it.
 | `/fees` | Fee setup | Admin, Accountant |
 | `/invoices` | Invoices | Admin, Accountant, Student/Parent (own) |
 | `/payments` | Payments | Admin, Accountant |
+| `/checkout/:uuid` | Secure checkout | Admin, Accountant, Student, Parent (intent scoped) |
 | `/announcements` | Announcements | All (staff can write) |
 | `/profile` | Profile | Any signed-in user |
 | `*` | NotFound | Public |
@@ -354,6 +383,14 @@ Route guards live in `frontend/src/App.jsx`; the sidebar is built in
 11. **Soft deletes + `PROTECT`:** financial and academic records are not
     hard-deleted.
 12. **No public registration** unless an operator explicitly enables it.
+13. **Online payments:** amounts are server-calculated under invoice row locks;
+    intent creation is idempotent per `(user, Idempotency-Key)`; settlement is
+    idempotent; webhooks are public but require an HMAC-SHA256 signature over
+    the raw body and a fresh timestamp, and are deduplicated by
+    `(gateway, event_id)`; sandbox confirmation is impossible when
+    `PAYMENT_SANDBOX=False`; only masked payer references are stored; production
+    refuses `PAYMENT_SANDBOX=True` or live payments without a strong secret and
+    HTTPS checkout base.
 
 When adding an endpoint: add a permission class, scope the queryset, and add a
 test for both an allowed and a forbidden role.
@@ -364,7 +401,7 @@ test for both an allowed and a forbidden role.
 
 ```bash
 cd backend
-.venv/bin/python -m pytest -q          # 70 tests, expected all green
+.venv/bin/python -m pytest -q          # 103 tests, expected all green
 .venv/bin/python -m pytest -q tests/test_auth.py   # one module
 .venv/bin/python manage.py check
 .venv/bin/python manage.py makemigrations --check --dry-run
@@ -380,12 +417,17 @@ Test modules:
 | `tests/test_attendance.py` | Bulk marking, section scoping, future dates, duplicates, summaries |
 | `tests/test_exams.py` | Marks entry, scoping, publishing, report cards, analytics |
 | `tests/test_finance.py` | Payments, overpayment, cancellation, deletion recalculation, invoice generation |
+| `tests/test_online_payments.py` | Gateway catalogue, intent ownership/amount caps, idempotency, sandbox settlement, duplicate settlement, expiry, cancellation, decline, balance-change race, signed webhooks (bad signature, stale timestamp, amount mismatch, unknown intent, replay) |
 | `tests/test_communication.py` | Audience filtering, expiry, read state, author-only edits |
 | `tests/test_uploads.py` | Valid image, disguised file, bad extension, oversize |
 
 Notes:
 - Tests use a disposable SQLite DB and MD5 password hashing (speed only).
-- Throttle rates are raised in tests to avoid false 429s; the real rates stay in settings.
+- Throttle rates are raised in tests to avoid false 429s; `SimpleRateThrottle`
+  is re-pointed at the relaxed rates and the cache is cleared per test so one
+  test cannot throttle the next. The real rates stay in settings.
+- Online-payment tests authenticate with `RefreshToken.for_user` instead of the
+  login endpoint to keep them off the login throttle.
 - Reset-token tests call `refresh_from_db()` because `last_login` changes on sign-in.
 
 ---
@@ -449,6 +491,11 @@ POST finance/invoices/generate/
 POST finance/invoices/{uuid}/payments/
 GET  finance/invoices/{uuid}/receipt/
 GET  finance/payments/summary/
+GET  finance/payment-gateways/
+CRUD finance/payment-intents/            (list/retrieve/create; Idempotency-Key on create)
+POST finance/payment-intents/{uuid}/sandbox-confirm/
+POST finance/payment-intents/{uuid}/cancel/
+POST finance/payment-webhook/{gateway}/  (public, HMAC-signed)
 ```
 
 ### Communication
@@ -541,6 +588,37 @@ DJANGO_SETTINGS_MODULE=config.settings.production .venv/bin/python -c \
 
 ## 13. Session log (append newest at the top)
 
+### 2026-11-12 — Secure online fee payments
+- Added a provider-agnostic online payment flow for students and parents:
+  bKash, Nagad, Rocket, other mobile banking, card and bank transfer.
+- New models `PaymentIntent` and `PaymentWebhookEvent` (migration
+  `finance/0002_online_payments.py`); the existing `Payment` ledger stays
+  authoritative and successful intents settle into it atomically.
+- New API: gateway catalogue, idempotent intent create/list/retrieve,
+  sandbox-confirm, cancel and signed webhook callback.
+- Security: server-calculated amounts, invoice row locking, per-user
+  idempotency, HMAC-SHA256 webhook signatures with timestamp tolerance and
+  event deduplication, masked payer references only, sandbox gated by
+  `PAYMENT_SANDBOX`, production hard-fail rules.
+- Frontend: “Pay online” on student/parent invoices, gateway picker,
+  `/checkout/:uuid` sandbox/live page with polling, and BDT (`৳`) formatting.
+- Added `tests/test_online_payments.py` (25 tests). Full suite: **103 passed**;
+  `manage.py check` clean; `makemigrations --check` reports no changes.
+- Fixed cross-test throttle contamination in `tests/conftest.py`.
+- Added payment env vars to `.env.compose.example`, `docker-compose.yml`,
+  `deploy/k8s/configmap.yaml`, `deploy/k8s/secret.example.yaml`.
+- Updated README, API, deployment, setup, architecture and handoff docs, plus
+  `.env.example`, `.env.compose.example`, `docker-compose.yml` and the K8s
+  ConfigMap/Secret templates with the payment variables.
+- Ran `npm install && npm run build` (Node 20): build succeeds, `frontend/dist`
+  updated. Verified the full payment lifecycle over live HTTP (login,
+  catalogue, intent, replay, conflict, sandbox settle, duplicate-settle
+  idempotency, invoice paid, rejected unsigned webhook, SPA checkout route);
+  the demo database was restored afterwards.
+- **Still open:** in-browser click-through of the new screens (the HTTP-level
+  flow is verified; visual polish may still need a manual pass), and live
+  provider adapters (no merchant credentials available).
+
 ### 2026-11-09 — Verification & handoff
 - Re-ran full pytest suite: **70 passed**; `manage.py check` clean.
 - Verified parent flow in browser: dashboard, results, invoices, attendance,
@@ -564,9 +642,11 @@ DJANGO_SETTINGS_MODULE=config.settings.production .venv/bin/python -c \
 
 ## 14. Definition of "done" (final acceptance checklist)
 
-- [ ] `pytest -q` all green (currently 70).
-- [ ] `manage.py check` clean; `makemigrations --check` reports no changes.
-- [ ] `npm run build` succeeds; `frontend/dist` updated.
+- [x] `pytest -q` all green (currently 103).
+- [x] `manage.py check` clean; `makemigrations --check` reports no changes.
+- [x] `npm run build` succeeds; `frontend/dist` updated.
+- [x] Sandbox checkout verified end-to-end over HTTP from `/invoices`
+      (intent → confirm → invoice paid, duplicate-safe).
 - [ ] All five demo roles can sign in and see only their permitted modules.
 - [ ] Forced password change works for admin-created users.
 - [ ] Password reset email flow works with a real mail backend.

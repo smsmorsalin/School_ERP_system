@@ -91,6 +91,7 @@ const TITLES = {
   "/fees": ["Fee setup", "Fee categories and class fees"],
   "/invoices": ["Invoices", "Billing and outstanding balances"],
   "/payments": ["Payments", "Collections and receipts"],
+  "/checkout": ["Secure checkout", "Complete your fee payment safely"],
   "/announcements": ["Announcements", "School-wide communication"],
   "/users": ["User accounts", "Accounts, roles and access"],
   "/roles": ["Roles & access", "Roles and permission matrix"],
@@ -516,7 +517,10 @@ function UserMenu() {
 export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
-  const [title, subtitle] = TITLES[location.pathname] || ["School ERP", "Management console"];
+  const [title, subtitle] = TITLES[location.pathname] ||
+    (location.pathname.startsWith("/checkout/")
+      ? TITLES["/checkout"]
+      : ["School ERP", "Management console"]);
   usePageTitle(title);
 
   useEffect(() => {
