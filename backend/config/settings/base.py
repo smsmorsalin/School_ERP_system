@@ -93,6 +93,7 @@ INSTALLED_APPS = [
     "apps.finance",
     "apps.communication",
     "apps.dashboard",
+    "apps.audit",
 ]
 
 MIDDLEWARE = [
@@ -107,6 +108,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "apps.core.middleware.SecurityHeadersMiddleware",
     "apps.core.middleware.RequestIDMiddleware",
+    "apps.audit.middleware.RequestMetadataMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"

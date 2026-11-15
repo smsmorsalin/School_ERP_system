@@ -24,7 +24,7 @@ cd ../frontend && npm install && npm run dev
 ## Tests
 
 ```bash
-cd backend && .venv/bin/python -m pytest        # 103 tests
+cd backend && .venv/bin/python -m pytest        # 110 tests
 ```
 
 ## Online fee payments (sandbox)
@@ -68,7 +68,17 @@ curl http://localhost:8000/api/v1/accounts/auth/me/ \
 python manage.py migrate                  # apply migrations
 python manage.py collectstatic --noinput  # production static files
 python manage.py createsuperuser          # Django admin account
+python manage.py send_fee_reminders --days-overdue 7 --dry-run   # preview reminders
+python manage.py send_fee_reminders --days-overdue 7             # send reminders
+python manage.py export_finance_csv --model invoices --output /tmp/invoices.csv
 ```
+
+## Audit log
+
+- Append-only trail of business-data writes (finance, academics, accounts, …).
+- Admin UI: **Audit log** in the sidebar.
+- API: `GET /api/v1/audit/` (admin only, read-only, filter + search).
+- Entries cannot be updated or deleted by design.
 
 ## Production
 

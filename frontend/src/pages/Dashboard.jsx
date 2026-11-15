@@ -16,6 +16,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { usePageTitle } from "../lib/usePageTitle";
 import { api } from "../lib/api";
 import {
   compactMoney,
@@ -59,6 +60,7 @@ function trendPoints(trend = []) {
 }
 
 export default function Dashboard() {
+  usePageTitle("Dashboard");
   const { user, isAdmin, hasRole } = useAuth();
   const navigate = useNavigate();
   const [data, setData] = useState(null);

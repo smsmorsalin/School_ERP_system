@@ -269,6 +269,37 @@ curl -H 'X-Forwarded-Proto: https' http://127.0.0.1:8000/api/v1/health/ready/
 
 Then open `https://your-domain`.
 
+### 2.5.1 Scheduled operations
+
+The migration Job creates the `audit` tables. To send overdue-fee reminders on a
+schedule, run the management command from a Kubernetes `CronJob` (or cron on a
+VM). Example manifest body:
+
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: school-erp-fee-reminders
+  namespace: school-erp
+spec:
+  schedule: "0 8 * * *"          # 08:00 daily
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: remind
+              image: ghcr.io/example/school-erp:latest
+              command: ["python", "manage.py", "send_fee_reminders", "--days-overdue", "7"]
+              envFrom:
+                - configMapRef: { name: school-erp-config }
+                - secretRef: { name: school-erp-secrets }
+```
+
+Each send is recorded in the audit log. Use `--dry-run` first to verify the
+recipient list. CSV exports can be run the same way with `export_finance_csv`.
+
 ### 2.6 What gets deployed
 
 | Object | Replicas | Notes |
@@ -406,6 +437,8 @@ kubectl -n school-erp exec deploy/school-erp-postgres -- \
 - [ ] Network policies restrict database/cache access.
 - [ ] Container images are pinned by tag/digest and scanned.
 - [ ] Logs and metrics are collected (the API writes structured request logs to stdout).
+- [ ] Audit log is retained/archived per your compliance policy (the app table is append-only; ship it to immutable storage for long-term retention).
+- [ ] Fee-reminder and CSV-export commands are scheduled via CronJob/cron with a working SMTP backend.
 
 ---
 

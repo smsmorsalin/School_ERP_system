@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { usePageTitle } from "../lib/usePageTitle";
 import { useToast } from "../context/ToastContext";
 import { api } from "../lib/api";
 import { downloadCSV, formatDate, percent, todayISO } from "../lib/format";
@@ -37,6 +38,7 @@ import { AreaChart } from "../components/charts";
 const STATUS_BUTTONS = ATTENDANCE_STATUSES;
 
 export default function Attendance() {
+  usePageTitle("Attendance");
   const { isAdmin, hasRole } = useAuth();
   if (hasRole("Student", "Parent") && !isAdmin && !hasRole("Teacher", "Accountant")) {
     return <MyAttendance />;

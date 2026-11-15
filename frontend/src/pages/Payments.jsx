@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import { downloadCSV, formatDateTime, money } from "../lib/format";
 import { PAYMENT_METHODS } from "../lib/constants";
 import { useAll, useFetch, useList } from "../lib/hooks";
+import { usePageTitle } from "../lib/usePageTitle";
 import {
   Avatar,
   Badge,
@@ -23,6 +24,7 @@ import {
 import { AreaChart, DonutChart, palette } from "../components/charts";
 
 export default function Payments() {
+  usePageTitle("Payments");
   const toast = useToast();
   const [method, setMethod] = useState("");
   const [paidFrom, setPaidFrom] = useState("");

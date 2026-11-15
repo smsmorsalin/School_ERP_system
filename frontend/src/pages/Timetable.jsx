@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Clock, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { usePageTitle } from "../lib/usePageTitle";
 import { useToast } from "../context/ToastContext";
 import { api } from "../lib/api";
 import { formatTime } from "../lib/format";
@@ -19,6 +20,7 @@ import {
 } from "../components/ui";
 
 export default function Timetable() {
+  usePageTitle("Timetable");
   const { isAdmin } = useAuth();
   const [section, setSection] = useState("");
   const { sections } = useReferenceData({ sections: true });

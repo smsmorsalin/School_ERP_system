@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, GraduationCap, KeyRound, ShieldCheck } from "lucide-react";
 import { api } from "../lib/api";
+import { usePageTitle } from "../lib/usePageTitle";
 import { useToast } from "../context/ToastContext";
 import { ErrorBanner, Field, Notice, Spinner } from "../components/ui";
 
 export default function ResetPassword() {
+  usePageTitle("Reset Password");
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const toast = useToast();

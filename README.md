@@ -30,6 +30,11 @@ students.
   students and parents.
 - **Communication** — role/class-targeted announcements with read receipts.
 - **Dashboard** — role-aware overview with charts and a global search.
+- **Audit trail** — an immutable, append-only log of every create/update/delete
+  on business data (payments, invoices, users, roles, marks, etc.), viewable by
+  admins in the UI and at `GET /api/v1/audit/`.
+- **Operations tooling** — overdue-fee reminder emails (`send_fee_reminders`) and
+  CSV exports for invoices, payments and fee structures (`export_finance_csv`).
 - **Security** — see [Security](#-security) below.
 
 ## 🧱 Tech Stack
@@ -42,7 +47,7 @@ students.
 | Database  | SQLite (development), PostgreSQL (production) via `psycopg` 3.2.9           |
 | Frontend  | React 18.3.1, react-router-dom 6.26.2, lucide-react 0.451.0                 |
 | Frontend  | Vite 5.4.8, plain CSS (custom design system)                                |
-| Testing   | pytest 8.4.2, pytest-django 4.11.1 (103 tests)                              |
+| Testing   | pytest 8.4.2, pytest-django 4.11.1 (110 tests)                              |
 
 ## 📁 Project Structure
 
@@ -59,14 +64,15 @@ School_ERP_system/
 │   │   │                       #   online payment intents and signed webhooks
 │   │   ├── communication/      # Targeted announcements and read receipts
 │   │   ├── dashboard/          # Role-aware overview and global search
+│   │   ├── audit/              # Append-only audit log (models, signals, API)
 │   │   └── core/               # Base models, RBAC, pagination, middleware, SPA
-│   ├── tests/                  # pytest suite (103 tests)
+│   ├── tests/                  # pytest suite (110 tests)
 │   ├── manage.py
 │   ├── requirements.txt
 │   └── .env.example
 ├── frontend/
 │   ├── src/
-│   │   ├── pages/              # 22 route screens
+│   │   ├── pages/              # 23 route screens
 │   │   ├── components/         # Layout, charts, UI primitives
 │   │   ├── context/            # Auth + toast providers
 │   │   ├── lib/                # API client, formatting, theme, hooks
@@ -183,15 +189,15 @@ See **[DEPLOYMENT.md](DEPLOYMENT.md)** for the full guide and
 
 ```bash
 cd backend
-.venv/bin/python -m pytest        # 103 tests, all green
+.venv/bin/python -m pytest        # 110 tests, all green
 ```
 
 The suite covers authentication, account lockout, JWT rotation/blacklisting,
 token-version revocation, the forced-password gate, RBAC and IDOR protection,
 attendance bulk marking, exam publishing, finance atomicity, image-upload
-validation, and online-payment security (ownership scoping, amount caps,
+validation, online-payment security (ownership scoping, amount caps,
 idempotency, sandbox settlement, expiry/cancellation, and signed webhook
-verification).
+verification), audit-log immutability/scoping and fee-reminder delivery.
 
 ## 🔐 Security
 
@@ -256,6 +262,7 @@ All endpoints are under `/api/v1/` and use UUID lookup. Paginated responses use:
 | Finance       | `finance/` (fee-categories, fee-structures, invoices, payments, payment-gateways, payment-intents, payment-webhook) |
 | Communication | `announcements/`                        |
 | Dashboard     | `dashboard/overview`, `dashboard/search`, `health` |
+| Audit         | `audit/` (admin-only, read-only)        |
 
 ## 🛠️ Management Commands
 
@@ -263,12 +270,15 @@ All endpoints are under `/api/v1/` and use UUID lookup. Paginated responses use:
 |----------------------------|------------------------------------------------|
 | `create_initial_roles`     | Seed the five system roles and permission catalogue |
 | `seed_demo_data`           | Create the demo school, users and sample data  |
+| `send_fee_reminders`       | Email students/guardians about overdue invoices (`--dry-run`, `--days-overdue`, `--limit`) |
+| `export_finance_csv`       | Export invoices, payments or fee structures to CSV (`--model`, `--output`) |
 
 ## 📈 Project Status
 
 - **Version:** 1.0.0
 - **Status:** ✅ Complete — backend + frontend + tests + docs
 - **Roles:** Admin, Teacher, Accountant, Student, Parent
-- **Tests:** 103 passing
+- **Tests:** 110 passing
 - **Online payments:** Sandbox-ready; live mode requires provider credentials
+- **Audit:** Append-only trail with admin viewer and read-only API
 - **License:** MIT

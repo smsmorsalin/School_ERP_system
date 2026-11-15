@@ -13,6 +13,7 @@ import {
 import { useToast } from "../context/ToastContext";
 import { api } from "../lib/api";
 import { useAll } from "../lib/hooks";
+import { usePageTitle } from "../lib/usePageTitle";
 import {
   Badge,
   Card,
@@ -64,6 +65,7 @@ function actionLabel(code) {
 }
 
 export default function Roles() {
+  usePageTitle("Roles");
   const toast = useToast();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);

@@ -16,6 +16,7 @@ import { api } from "../lib/api";
 import { downloadCSV, formatDate, todayISO } from "../lib/format";
 import { EMPLOYMENT_TYPES } from "../lib/constants";
 import { useDebounced, useList } from "../lib/hooks";
+import { usePageTitle } from "../lib/usePageTitle";
 import {
   Avatar,
   Badge,
@@ -48,6 +49,7 @@ const emptyForm = {
 };
 
 export default function Teachers() {
+  usePageTitle("Teachers");
   const toast = useToast();
   const [search, setSearch] = useState("");
   const debounced = useDebounced(search);

@@ -21,6 +21,9 @@ backend, the React frontend, the role model and the security model.
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────────────┐  │
 │  │communicat│ │dashboard │ │   core   │ │  config (settings)    │  │
 │  └──────────┘ └──────────┘ └──────────┘ └──────────────────────┘  │
+│                    ┌──────────┐                                    │
+│                    │  audit   │  append-only event trail           │
+│                    └──────────┘                                    │
 └───────────────┬────────────────────────────────┬───────────────────┘
                 │                                │
         ┌───────▼───────┐                ┌───────▼───────┐
@@ -56,8 +59,9 @@ backend/
 │   ├── finance/              # fee categories, structures, invoices, payments,
 │   │                         #   online payment intents + signed webhooks
 │   ├── communication/        # announcements + read receipts
-│   └── dashboard/            # role-aware overview + global search + health
-├── tests/                    # pytest suite (conftest + 8 modules, 103 tests)
+│   ├── dashboard/            # role-aware overview + global search + health
+│   └── audit/                # append-only AuditLog, signals, read-only API
+├── tests/                    # pytest suite (conftest + 9 modules, 110 tests)
 ├── manage.py
 └── requirements.txt
 ```
@@ -75,6 +79,7 @@ backend/
 | `finance`     | Fee categories, fee structures, invoices (bulk generate), payments (atomic), receipts, summaries, online payment intents (bKash/Nagad/Rocket/other mobile banking/card/bank) and signed gateway webhooks |
 | `communication` | Announcements with audience (all/students/parents/teachers/class) and read receipts |
 | `dashboard`   | Role-aware overview aggregates, global search, health check |
+| `audit`       | Append-only `AuditLog`, signal-based capture of business-model writes, admin-only read-only API |
 | `core`        | Shared `BaseModel`, RBAC permission classes, pagination, filters, error format, security middleware, SPA view |
 
 ---
@@ -260,6 +265,33 @@ stores the new access token in memory and retries the original request. If the
 refresh fails it dispatches a `school-erp:session-expired` event, clears state
 and redirects to login. Nothing sensitive is stored in browser storage.
 
+### 6.7 Audit logging
+
+`apps.audit` maintains a **tamper-evident, append-only** trail of changes to
+business data.
+
+- **Capture** — `post_save` / `post_delete` receivers record one row per write
+  for models in the audited apps (`accounts`, `academics`, `attendance`,
+  `exams`, `finance`, `communication`). High-churn/internal models (login
+  history, permission catalogue, derived join rows, token blacklist) are
+  excluded, as is the audit model itself (no recursion).
+- **Immutability** — `AuditLog.save()` refuses updates once a row exists and
+  `delete()` is blocked; entries are never edited or removed.
+- **What is stored** — action (`finance.invoice.updated`), category, actor
+  (user + email snapshot), target app/model/UUID/repr, before/after JSON
+  snapshots, IP address, user-agent and a per-request correlation id.
+- **Failure isolation** — writes run inside a savepoint and are wrapped in a
+  broad `except`, so auditing can never fail or break the primary operation.
+  Before the audit table is migrated the recorder is a no-op.
+- **Access** — `GET /api/v1/audit/` and `/api/v1/audit/{uuid}/` are read-only and
+  restricted to admins (`IsAdminUser`); the UI exposes an **Audit log** screen to
+  admins with filters, search and CSV export.
+- **Request metadata** — `RequestMetadataMiddleware` stores the current request
+  on a thread-local and assigns a correlation id for grouping.
+
+See [`FUTURE_IMPLEMENTATION.md`](FUTURE_IMPLEMENTATION.md) for planned
+enhancements (retention policy, log shipping, field-level diffs).
+
 ---
 
 ## 7. API conventions
@@ -298,12 +330,13 @@ frontend/src/
 │   ├── constants.js      # labels/options for statuses, grades, audiences
 │   ├── format.js         # currency, dates, numbers, initials
 │   ├── hooks.js          # reusable data-fetching hooks
+│   ├── usePageTitle.js   # per-route document.title helper
 │   └── theme.js          # light/dark theme
 ├── components/
 │   ├── Layout.jsx        # sidebar + topbar shell
 │   ├── ui.jsx            # buttons, cards, inputs, tables, badges, modals
 │   └── charts.jsx        # custom SVG charts (line, donut, bars)
-└── pages/                # 22 route screens
+└── pages/                # 23 route screens
 ```
 
 - **Routing**: `react-router-dom` v6 with nested routes and role guards. A user

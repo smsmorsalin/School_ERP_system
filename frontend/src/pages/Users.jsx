@@ -15,6 +15,7 @@ import {
   Users as UsersIcon,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { usePageTitle } from "../lib/usePageTitle";
 import { useToast } from "../context/ToastContext";
 import { api } from "../lib/api";
 import { ROLES } from "../lib/constants";
@@ -60,6 +61,7 @@ async function copyText(text) {
 }
 
 export default function Users() {
+  usePageTitle("Users");
   const { user: currentUser } = useAuth();
   const toast = useToast();
   const [search, setSearch] = useState("");

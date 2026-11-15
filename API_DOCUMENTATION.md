@@ -541,12 +541,49 @@ Expired announcements (`expires_at`) are hidden for non-admins.
 
 ---
 
+## Audit log (Admin, read-only)
+
+An append-only record of create/update/delete activity on business models. It is
+written automatically by signal receivers and cannot be edited or deleted.
+
+| Endpoint | Notes |
+|---|---|
+| `GET /audit/` | Paginated list, newest first. Filters: `action`, `action_category`, `target_app`, `target_model`, `actor`. Search: `actor_email`, `action`, `target_repr`, `ip_address`. Ordering: `created_at`, `action`. |
+| `GET /audit/{uuid}/` | Retrieve one entry (including before/after snapshots). |
+
+Non-admin users receive `403`; unauthenticated requests receive `401`.
+
+### Example entry
+
+```json
+{
+  "uuid": "…",
+  "actor": "…",
+  "actor_email": "accountant@school.example",
+  "action": "finance.payment.created",
+  "action_category": "finance",
+  "target_app": "finance",
+  "target_model": "payment",
+  "target_uuid": "…",
+  "target_repr": "RCP-2026-000042",
+  "before": null,
+  "after": { "amount": "150.00", "method": "bkash", "…": "…" },
+  "ip_address": "203.0.113.10",
+  "request_id": "…",
+  "created_at": "2026-11-15T09:12:33Z"
+}
+```
+
+---
+
 ## Management commands
 
 | Command | Purpose |
 |---|---|
 | `python manage.py create_initial_roles` | Seed the 5 system roles + permissions |
 | `python manage.py seed_demo_data` | Seed a demo school, users and data |
+| `python manage.py send_fee_reminders [--days-overdue N] [--dry-run] [--limit N]` | Email students/guardians about overdue invoices; each send is audited |
+| `python manage.py export_finance_csv --model invoices\|payments\|fee-structures --output PATH` | Export finance data to CSV |
 
 ---
 

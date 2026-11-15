@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
+  Activity,
   Banknote,
   Bell,
   BookOpen,
@@ -46,6 +47,7 @@ const NAV_GROUPS = [
       { to: "/teachers", label: "Teachers", icon: Users, roles: all("Admin") },
       { to: "/users", label: "User accounts", icon: UserCircle, roles: all("Admin") },
       { to: "/roles", label: "Roles & access", icon: ShieldCheck, roles: all("Admin") },
+      { to: "/audit", label: "Audit log", icon: Activity, roles: all("Admin") },
     ],
   },
   {
@@ -95,6 +97,7 @@ const TITLES = {
   "/announcements": ["Announcements", "School-wide communication"],
   "/users": ["User accounts", "Accounts, roles and access"],
   "/roles": ["Roles & access", "Roles and permission matrix"],
+  "/audit": ["Audit log", "Immutable trail of sensitive actions"],
   "/profile": ["My profile", "Personal details and security"],
   "/change-password": ["Change password", "Keep your account secure"],
 };

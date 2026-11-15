@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Award, Download, FileText, GraduationCap, Printer, Search } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { usePageTitle } from "../lib/usePageTitle";
 import { useToast } from "../context/ToastContext";
 import { api } from "../lib/api";
 import { downloadCSV, formatDate, gradeTone, percent } from "../lib/format";
@@ -21,6 +22,7 @@ import {
 } from "../components/ui";
 
 export default function Results() {
+  usePageTitle("Results");
   const { isAdmin, hasRole } = useAuth();
   if (hasRole("Student", "Parent") && !isAdmin && !hasRole("Teacher")) return <FamilyResults />;
   return <StaffResults />;

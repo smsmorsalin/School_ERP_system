@@ -110,6 +110,24 @@ python manage.py createsuperuser
 > `Admin` role. Use `createsuperuser` if you want Django-admin access with a
 > separate account, or promote a user in the Users screen.
 
+### Operational commands
+
+```bash
+# Preview overdue-fee reminders (no email sent)
+python manage.py send_fee_reminders --days-overdue 7 --dry-run
+
+# Send the reminders (uses EMAIL_BACKEND; console backend prints to stdout)
+python manage.py send_fee_reminders --days-overdue 7
+
+# Export finance data
+python manage.py export_finance_csv --model invoices --output /tmp/invoices.csv
+python manage.py export_finance_csv --model payments --output /tmp/payments.csv
+python manage.py export_finance_csv --model fee-structures --output /tmp/fees.csv
+```
+
+The `audit` app ships its own migration and is created by `migrate`. Admins can
+review the trail at **Audit log** in the UI or `GET /api/v1/audit/`.
+
 ### Run the development server
 
 ```bash
@@ -157,7 +175,7 @@ npm run build
 
 ```bash
 cd backend
-.venv/bin/python -m pytest          # 103 tests
+.venv/bin/python -m pytest          # 110 tests
 .venv/bin/python -m pytest -v       # verbose
 .venv/bin/python -m pytest tests/test_auth.py   # one file
 ```

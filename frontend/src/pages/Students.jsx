@@ -15,6 +15,7 @@ import {
   Users,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { usePageTitle } from "../lib/usePageTitle";
 import { useToast } from "../context/ToastContext";
 import { api } from "../lib/api";
 import { downloadCSV, formatDate, fullName, percent, todayISO } from "../lib/format";
@@ -89,6 +90,7 @@ function cleanPayload(form, mode) {
 }
 
 export default function Students() {
+  usePageTitle("Students");
   const { isAdmin, hasRole } = useAuth();
   if (hasRole("Student") && !isAdmin) return <StudentSelfView />;
   if (hasRole("Parent") && !isAdmin && !hasRole("Teacher", "Accountant")) return <ParentChildrenView />;

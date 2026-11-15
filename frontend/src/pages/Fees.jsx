@@ -4,6 +4,7 @@ import { useToast } from "../context/ToastContext";
 import { api } from "../lib/api";
 import { formatDate, money, todayISO } from "../lib/format";
 import { useList, useReferenceData } from "../lib/hooks";
+import { usePageTitle } from "../lib/usePageTitle";
 import {
   Badge,
   Card,
@@ -21,6 +22,7 @@ import {
 } from "../components/ui";
 
 export default function Fees() {
+  usePageTitle("Fees");
   const [tab, setTab] = useState("structures");
   return (
     <>

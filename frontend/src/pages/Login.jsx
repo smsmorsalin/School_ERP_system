@@ -12,6 +12,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { usePageTitle } from "../lib/usePageTitle";
 import { useToast } from "../context/ToastContext";
 import { DEMO_ACCOUNTS } from "../lib/constants";
 import { ErrorBanner, Spinner } from "../components/ui";
@@ -24,6 +25,7 @@ const HIGHLIGHTS = [
 ];
 
 export default function Login() {
+  usePageTitle("Login");
   const { login, user, booting } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();

@@ -2,7 +2,7 @@
 
 **Status:** ✅ Complete
 **Stack:** Django 6.0.6 + DRF 3.16.1 (backend) · React 18 + Vite 5 (frontend)
-**Tests:** 103 passing (`pytest`)
+**Tests:** 110 passing (`pytest`)
 **Docs:** [README](README.md) · [ARCHITECTURE](ARCHITECTURE.md) ·
 [SETUP_GUIDE](SETUP_GUIDE.md) · [API_DOCUMENTATION](API_DOCUMENTATION.md)
 
@@ -38,6 +38,11 @@ This document summarises what was built and verified.
   sandbox confirmation, and HMAC-SHA256-signed timestamp-bounded webhooks with
   event deduplication. Only masked payer references are stored.
 - **Role-aware dashboard** with charts data, global search and health check.
+- **Audit trail** — an append-only `audit.AuditLog` populated by signal receivers
+  for business-app writes, with before/after snapshots, actor/IP/request-id
+  metadata, admin-only read-only API and a UI viewer. Immutable by design.
+- **Operations commands** — `send_fee_reminders` (overdue invoices, dry-run,
+  audited sends) and `export_finance_csv` (invoices, payments, fee structures).
 - **Security hardening** — CSP/security headers, throttling, Pillow-validated
   image uploads (2 MB, allow-list), soft deletes, protected FKs, password
   complexity policy, disabled public registration.
@@ -47,10 +52,11 @@ This document summarises what was built and verified.
 
 ### Frontend (React + Vite)
 
-- 22 screens: dashboard, students, teachers, users, roles, classes, subjects,
-  timetable, attendance, exams, results, invoices, fee setup, payments,
+- 23 screens: dashboard, students, teachers, users, roles, audit log, classes,
+  subjects, timetable, attendance, exams, results, invoices, fee setup, payments,
   announcements, profile, change password, forgot/reset password, checkout,
   login, 404.
+- Every page sets a descriptive `document.title` via `lib/usePageTitle.js`.
 - Online payment UI: “Pay online” on student/parent invoices, grouped gateway
   picker (mobile banking / card / bank), amount entry capped at the balance,
   and a secure `/checkout/:uuid` page with sandbox pay/decline/cancel and
@@ -69,7 +75,9 @@ attendance bulk marking, exam publishing and report cards, finance atomicity,
 announcement audiences and image-upload validation — plus 25 online-payment
 tests covering ownership scoping, amount caps, idempotency, sandbox settlement,
 duplicate settlement, expiry, cancellation, declines, balance-change races and
-every signed-webhook rejection path (103 total).
+every signed-webhook rejection path. A further 7 tests cover the audit log
+(immutability, self-audit prevention, admin-only API) and fee reminders
+(send/dry-run/skips) — **110 total**.
 
 ---
 

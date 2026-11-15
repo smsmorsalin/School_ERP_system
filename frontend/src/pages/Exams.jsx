@@ -12,6 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { usePageTitle } from "../lib/usePageTitle";
 import { useToast } from "../context/ToastContext";
 import { api } from "../lib/api";
 import { formatDate, formatTime } from "../lib/format";
@@ -37,6 +38,7 @@ import {
 import { DonutChart, palette } from "../components/charts";
 
 export default function Exams() {
+  usePageTitle("Exams");
   const { isAdmin } = useAuth();
   const toast = useToast();
   const [search, setSearch] = useState("");

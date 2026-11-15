@@ -15,6 +15,7 @@ import {
   UserCircle,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { usePageTitle } from "../lib/usePageTitle";
 import { useToast } from "../context/ToastContext";
 import { api } from "../lib/api";
 import { formatDate, formatDateTime } from "../lib/format";
@@ -46,6 +47,7 @@ const emptyForm = {
 };
 
 export default function Profile() {
+  usePageTitle("Profile");
   const { user, refreshUser, logout } = useAuth();
   const toast = useToast();
   const fileRef = useRef(null);

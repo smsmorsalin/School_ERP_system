@@ -16,7 +16,7 @@ The project is a **full-stack School ERP / school management system**:
 
 - **Backend:** Django 6 + Django REST Framework, JWT auth, role-based access control (RBAC), SQLite in development / PostgreSQL for production.
 - **Frontend:** React 18 + Vite 5 single-page app (plain CSS, `lucide-react` icons, custom SVG charts), built into `frontend/dist` and served by Django.
-- **Status:** Feature-complete for the original scope plus **secure online fee payments** (bKash, Nagad, Rocket, other mobile banking, card, bank). **103 automated tests pass.** All five roles have been smoke-tested in a real browser, and the payment backend is fully covered by tests. Security hardening is implemented and verified.
+- **Status:** Feature-complete for the original scope plus **secure online fee payments** (bKash, Nagad, Rocket, other mobile banking, card, bank) and an **append-only audit trail**. **110 automated tests pass.** All five roles have been smoke-tested in a real browser, and the payment backend is fully covered by tests. Security hardening is implemented and verified.
 - **What remains:** optional polish, live provider adapters (needs merchant credentials), and deployment on real infrastructure. See §5.
 
 **If you are an AI resuming this project:** run §2 (setup), run §8 (tests),
@@ -64,8 +64,9 @@ School_ERP_system/
 │   │   ├── exams/             ← exams, papers, results, report cards, analytics
 │   │   ├── finance/           ← fee categories/structures, invoices, payments
 │   │   ├── communication/     ← announcements + read tracking
-│   │   └── dashboard/         ← role-aware overview, global search, health
-│   ├── tests/                 ← 103 pytest tests (conftest + 8 modules)
+│   │   ├── dashboard/         ← role-aware overview, global search, health
+│   │   └── audit/             ← append-only AuditLog, signals, read-only API
+│   ├── tests/                 ← 110 pytest tests (conftest + 9 modules)
 │   ├── staticfiles/
 │   └── media/
 └── frontend/
@@ -78,8 +79,9 @@ School_ERP_system/
         ├── main.jsx           ← providers
         ├── components/        ← Layout, ui primitives, charts
         ├── context/           ← AuthContext, ToastContext
-        ├── lib/               ← api client, constants, format, hooks, theme
-        ├── pages/             ← 21 pages (see §6)
+        ├── lib/               ← api client, constants, format, hooks,
+        │                         usePageTitle, theme
+        ├── pages/             ← 23 pages (see §6)
         └── styles.css
 ```
 
@@ -207,11 +209,24 @@ timetable, attendance, exams/results, invoices/payments and announcements.
       insecure refresh cookie, `PAYMENT_SANDBOX=True`, or live payments enabled
       without a strong webhook secret and HTTPS checkout base. Schema/docs are
       admin-only in production.
-- [x] 103-test pytest suite — **all passing** (`cd backend && .venv/bin/python -m pytest -q`).
+- [x] 110-test pytest suite — **all passing** (`cd backend && .venv/bin/python -m pytest -q`).
+- [x] **Audit log** — append-only `audit.AuditLog` populated by `post_save`/
+      `post_delete` signals for business apps (accounts, academics, attendance,
+      exams, finance, communication). Captures actor, action, target,
+      before/after snapshots, IP/user-agent and request id. Admin-only read-only
+      API (`/api/v1/audit/`) and an **Audit log** UI screen.
+- [x] **Fee reminders** — `send_fee_reminders` emails students/guardians about
+      overdue invoices (`--days-overdue`, `--dry-run`, `--limit`); each send is
+      audited.
+- [x] **CSV export** — `export_finance_csv --model invoices|payments|fee-structures`
+      writes finance data to a CSV file.
 
 ### 4.2 Frontend
 
-- [x] All 21 pages built (see §6), responsive layout with collapsible sidebar.
+- [x] All 23 pages built (see §6), responsive layout with collapsible sidebar.
+- [x] Per-page `document.title` via `usePageTitle` on every page.
+- [x] Admin **Audit log** page (`/audit`) with filters, search, pagination and
+      client-side CSV export.
 - [x] Auth context, automatic token refresh, logout, route guards by role.
 - [x] Forced-password-change redirect (`/change-password`).
 - [x] Role-aware navigation (each role sees only permitted modules).
@@ -243,7 +258,7 @@ before and after changing it.
 
 ### P0 — must verify on resume (do first, ~10 minutes)
 
-- [x] Run the backend test suite (§8) and confirm **103 passed**.
+- [x] Run the backend test suite (§8) and confirm **110 passed**.
 - [x] Run `npm install && npm run build` in `frontend/` — the build succeeds
       (1606 modules) and `frontend/dist` now contains the payment UI.
 - [x] End-to-end verified over real HTTP against the dev server: student login →
@@ -271,9 +286,8 @@ before and after changing it.
 
 ### P2 — polish / small UX tasks
 
-- [ ] Per-page `document.title` on SPA navigation. `lib/usePageTitle.js` exists
-      but is only used by ~2 pages; apply it to every page so titles update
-      (currently the tab title stays "Dashboard · School ERP").
+- [x] Per-page `document.title` on SPA navigation — `usePageTitle` is now applied
+      to every page.
 - [ ] Accessibility pass: focus outlines, modal focus traps, `aria-label`s on
       icon-only buttons, table caption/scope, colour contrast.
 - [ ] Empty-state and error-state copy review across all pages.
@@ -284,17 +298,44 @@ before and after changing it.
 
 ### P3 — feature ideas (optional, user said "you can add extra")
 
-- [ ] CSV export for users/students/invoices/payments (server-side streaming).
+- [x] CSV export for invoices/payments/fee structures (`export_finance_csv`).
+- [x] Attendance "mark all present" bulk action UI (already implemented in
+      `Attendance.jsx`).
+- [x] Fee reminder emails / overdue notifications (`send_fee_reminders`).
+- [x] Audit log for admin actions (append-only model + signals + admin API + UI).
+- [ ] CSV export for users/students (extend `export_finance_csv` pattern).
 - [ ] CSV import for students / marks.
 - [ ] Printable/PDF report cards and fee receipts.
-- [ ] Attendance "mark all present" bulk action UI (backend already supports bulk).
-- [ ] Fee reminder emails / overdue notifications (needs SMTP config).
 - [ ] Announcement attachments.
-- [ ] Audit log for admin actions (who changed what, when).
 - [ ] Optional 2FA / TOTP for Admin accounts.
 - [ ] Dashboard date-range filters and downloadable reports.
 - [ ] Parent ↔ multiple children switcher improvements.
 - [ ] Internationalisation (currently English only).
+
+### P3.5 — New opportunities (analysis pass)
+
+- [ ] **Audit retention & shipping** — archive rows older than N days to
+      object storage / a SIEM; add a `prune_audit_log` command that respects the
+      append-only design by exporting first.
+- [ ] **Field-level audit diffs** — store only changed fields instead of full
+      before/after snapshots to reduce row size.
+- [ ] **Notification preferences** — let parents choose which reminders they
+      receive and when (days before/after due date).
+- [ ] **Receipt/invoice PDF** — server-render PDFs (WeasyPrint or ReportLab) and
+      email them with reminders.
+- [ ] **Bulk SMS reminders** — add an SMS provider alongside email, tracked in
+      the audit log.
+- [ ] **Scheduled exports** — nightly CSV/Excel snapshots to object storage with
+      signed download links.
+- [ ] **Exam analytics export** — per-class performance reports as CSV/PDF.
+- [ ] **Soft-delete restore UI** — surface `is_active=False` records for admins
+      with restore actions (audited).
+- [ ] **Audit dashboard tiles** — counts of failed logins, role changes and
+      payment activity on the admin dashboard.
+- [ ] **Pagination/filter on login-history** — the data exists but the UI only
+      shows the latest entries.
+- [ ] **Saved filter views** — remember per-page filter choices per user.
+- [ ] **Global keyboard command palette** — quick navigation/search (⌘K).
 
 ### P4 — production & DevOps
 
@@ -337,6 +378,7 @@ before and after changing it.
 | `/teachers` | Teachers | Admin |
 | `/users` | Users | Admin |
 | `/roles` | Roles | Admin |
+| `/audit` | Audit log | Admin |
 | `/classes` | Classes | Admin, Teacher, Student, Parent (read) |
 | `/subjects` | Subjects | Admin, Teacher, Student, Parent (read) |
 | `/timetable` | Timetable | All signed-in roles (scoped) |
@@ -401,7 +443,7 @@ test for both an allowed and a forbidden role.
 
 ```bash
 cd backend
-.venv/bin/python -m pytest -q          # 103 tests, expected all green
+.venv/bin/python -m pytest -q          # 110 tests, expected all green
 .venv/bin/python -m pytest -q tests/test_auth.py   # one module
 .venv/bin/python manage.py check
 .venv/bin/python manage.py makemigrations --check --dry-run
@@ -420,6 +462,7 @@ Test modules:
 | `tests/test_online_payments.py` | Gateway catalogue, intent ownership/amount caps, idempotency, sandbox settlement, duplicate settlement, expiry, cancellation, decline, balance-change race, signed webhooks (bad signature, stale timestamp, amount mismatch, unknown intent, replay) |
 | `tests/test_communication.py` | Audience filtering, expiry, read state, author-only edits |
 | `tests/test_uploads.py` | Valid image, disguised file, bad extension, oversize |
+| `tests/test_audit.py` | Audit capture on writes, immutability, self-audit prevention, admin-only API, fee reminders (send/dry-run/skips) |
 
 Notes:
 - Tests use a disposable SQLite DB and MD5 password hashing (speed only).
@@ -513,6 +556,13 @@ GET dashboard/search/?q=
 GET health/
 ```
 
+### Audit (Admin, read-only)
+```
+GET audit/                 (filters: action, action_category, target_app,
+                            target_model, actor; search; ordering)
+GET audit/{uuid}/
+```
+
 Pagination shape everywhere:
 `{ count, next, previous, page, page_size, total_pages, results }`.
 
@@ -523,8 +573,13 @@ Permission codes are **bare actions** such as `view_student` or
 
 ## 10. Known issues / gotchas
 
-- **SPA page titles:** `document.title` does not update on client-side
-  navigation for most pages (minor; see P2).
+- **Audit noise control:** only business apps are audited; `token_blacklist`,
+  sessions, login history and the audit table itself are excluded to avoid
+  recursion/noise. Add new apps to `AUDITED_APPS` in `apps/audit/signals.py` if
+  they need tracking.
+- **Audit is append-only:** `AuditLog.delete()` raises, and queryset deletes
+  should not be used. To purge dev noise, use a controlled migration/raw SQL in
+  a non-production environment.
 - **Browser tooling:** the accessibility snapshot often omits form inputs; use
   DOM evaluation or the login page's demo-account buttons when testing.
 - **Login throttle:** rapidly repeated logins can return HTTP 429 by design.
@@ -588,6 +643,24 @@ DJANGO_SETTINGS_MODULE=config.settings.production .venv/bin/python -c \
 
 ## 13. Session log (append newest at the top)
 
+### 2026-11-15 — Audit trail, reminders, CSV export & page titles
+- Added `apps.audit` — append-only `AuditLog`, signal-based capture for business
+  apps, thread-local request metadata middleware, admin-only read-only API
+  (`/api/v1/audit/`) and a Django-admin viewer.
+- Capture is savepoint-protected and never breaks the primary operation; it is a
+  no-op before the audit table exists. High-churn/internal models are excluded.
+- Added `send_fee_reminders` (overdue invoices, `--dry-run`, `--limit`, audited
+  sends) and `export_finance_csv` (invoices/payments/fee-structures).
+- Added admin **Audit log** page with filters, search, pagination and CSV export;
+  applied `usePageTitle` to every page (23 screens).
+- Added `tests/test_audit.py` (7 tests). Full suite: **110 passed**;
+  `manage.py check` clean; `makemigrations --check` reports no changes.
+- Verified live HTTP: admin audit list returns rows, student gets `403`, `/audit`
+  SPA returns `200`; rebuilt `frontend/dist` (1606 modules).
+- Updated all top-level docs; appended new ideas to `FUTURE_IMPLEMENTATION.md`.
+- **Still open:** live provider adapters, audit retention/shipping, and the P3.5
+  opportunities (see §5).
+
 ### 2026-11-12 — Secure online fee payments
 - Added a provider-agnostic online payment flow for students and parents:
   bKash, Nagad, Rocket, other mobile banking, card and bank transfer.
@@ -642,7 +715,7 @@ DJANGO_SETTINGS_MODULE=config.settings.production .venv/bin/python -c \
 
 ## 14. Definition of "done" (final acceptance checklist)
 
-- [x] `pytest -q` all green (currently 103).
+- [x] `pytest -q` all green (currently 110).
 - [x] `manage.py check` clean; `makemigrations --check` reports no changes.
 - [x] `npm run build` succeeds; `frontend/dist` updated.
 - [x] Sandbox checkout verified end-to-end over HTTP from `/invoices`

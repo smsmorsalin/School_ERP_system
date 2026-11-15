@@ -31,7 +31,7 @@ src/
 │   ├── Layout.jsx        # sidebar + topbar shell
 │   ├── ui.jsx            # buttons, cards, tables, badges, inputs, modals
 │   └── charts.jsx        # SVG line / donut / bar charts
-└── pages/                # 23 route screens (incl. the checkout page)
+└── pages/                # 23 route screens (incl. audit log and checkout)
 ```
 
 ## Online fee payments
@@ -73,6 +73,13 @@ npm run preview    # preview the production build
 `RequireRole` wraps routes with allowed roles. Users without access see a
 friendly "You do not have access" screen instead of a blank page. The sidebar
 and topbar render only the sections a role can use.
+
+## Page titles & audit
+
+Every page sets a descriptive `document.title` via `usePageTitle` so the
+browser tab updates on client-side navigation. Admins see an **Audit log**
+page (`/audit`) with filters, search, pagination and CSV export of the
+append-only `audit.AuditLog` (read-only API at `/api/v1/audit/`).
 
 ## Build output
 

@@ -39,6 +39,7 @@ urlpatterns = [
     path("api/v1/", include("apps.finance.urls")),
     path("api/v1/", include("apps.communication.urls")),
     path("api/v1/", include("apps.dashboard.urls")),
+    path("api/v1/", include("apps.audit.urls")),
 ]
 
 # Media files are served by Django only in development. In production put

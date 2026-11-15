@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCheck, Megaphone, Pencil, Pin, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { usePageTitle } from "../lib/usePageTitle";
 import { useToast } from "../context/ToastContext";
 import { api } from "../lib/api";
 import { formatDateTime, relativeTime } from "../lib/format";
@@ -24,6 +25,7 @@ import {
 } from "../components/ui";
 
 export default function Announcements() {
+  usePageTitle("Announcements");
   const { user, isAdmin, hasRole } = useAuth();
   const toast = useToast();
   const canPublish = isAdmin || hasRole("Teacher");

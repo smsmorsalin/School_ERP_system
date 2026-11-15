@@ -288,6 +288,21 @@ def auth_client():
 
 
 @pytest.fixture
+def client_for():
+    """Return an authenticated APIClient without hitting the login endpoint."""
+
+    def _factory(user):
+        from rest_framework_simplejwt.tokens import RefreshToken
+
+        token = RefreshToken.for_user(user)
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {token.access_token}")
+        return client
+
+    return _factory
+
+
+@pytest.fixture
 def tomorrow():
     return date.today() + timedelta(days=1)
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Eye, EyeOff, GraduationCap, KeyRound, LogOut, ShieldCheck } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { usePageTitle } from "../lib/usePageTitle";
 import { useToast } from "../context/ToastContext";
 import { api } from "../lib/api";
 import { ErrorBanner, Field, Notice, Spinner } from "../components/ui";
@@ -17,6 +18,7 @@ function strength(password) {
 }
 
 export default function ChangePassword() {
+  usePageTitle("Change Password");
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();

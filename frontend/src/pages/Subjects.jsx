@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { BookMarked, Link2, Pencil, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { usePageTitle } from "../lib/usePageTitle";
 import { useToast } from "../context/ToastContext";
 import { api } from "../lib/api";
 import { useAll, useDebounced, useList, useReferenceData } from "../lib/hooks";
@@ -23,6 +24,7 @@ import {
 } from "../components/ui";
 
 export default function Subjects() {
+  usePageTitle("Subjects");
   const { isAdmin } = useAuth();
   const [tab, setTab] = useState("subjects");
   return (

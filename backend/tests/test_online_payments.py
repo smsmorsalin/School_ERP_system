@@ -47,21 +47,6 @@ def signed_webhook(client, payload, *, secret=SECRET, timestamp=None, signature=
     )
 
 
-@pytest.fixture
-def client_for():
-    """Authenticate without the login endpoint (keeps tests off the login throttle)."""
-
-    def _factory(user):
-        from rest_framework_simplejwt.tokens import RefreshToken
-
-        token = RefreshToken.for_user(user)
-        client = APIClient()
-        client.credentials(HTTP_AUTHORIZATION=f"Bearer {token.access_token}")
-        return client
-
-    return _factory
-
-
 # ---------------------------------------------------------------------------
 # Catalogue and creation
 # ---------------------------------------------------------------------------

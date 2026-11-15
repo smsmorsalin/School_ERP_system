@@ -23,6 +23,7 @@ import Checkout from "./pages/Checkout";
 import Announcements from "./pages/Announcements";
 import Users from "./pages/Users";
 import Roles from "./pages/Roles";
+import Audit from "./pages/Audit";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
@@ -135,6 +136,15 @@ export default function App() {
           element={
             <RequireRole roles={["Admin"]}>
               <Roles />
+            </RequireRole>
+          }
+        />
+
+        <Route
+          path="audit"
+          element={
+            <RequireRole roles={["Admin"]}>
+              <Audit />
             </RequireRole>
           }
         />

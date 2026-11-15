@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
+import { usePageTitle } from "../lib/usePageTitle";
 import { ArrowLeft, Compass, Home } from "lucide-react";
 import { EmptyState } from "../components/ui";
 
 export default function NotFound() {
+  usePageTitle("Not Found");
   return (
     <div style={{ padding: "48px 12px" }}>
       <EmptyState
