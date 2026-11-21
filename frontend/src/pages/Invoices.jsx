@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Ban,
   CalendarClock,
@@ -7,7 +7,6 @@ import {
   FileText,
   Pencil,
   Plus,
-  Printer,
   Receipt,
   Trash2,
   Wallet,
@@ -16,7 +15,7 @@ import { useAuth } from "../context/AuthContext";
 import { usePageTitle } from "../lib/usePageTitle";
 import { useToast } from "../context/ToastContext";
 import { api } from "../lib/api";
-import { downloadCSV, formatDate, formatDateTime, money, statusTone, todayISO } from "../lib/format";
+import { downloadCSV, formatDate, money, todayISO } from "../lib/format";
 import { PAYMENT_METHODS } from "../lib/constants";
 import { useDebounced, useFetch, useList, useReferenceData } from "../lib/hooks";
 import {
@@ -56,8 +55,6 @@ function InvoicesView({ canManage }) {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [paying, setPaying] = useState(null);
-  const [receipt, setReceipt] = useState(null);
-  const [receiptLoading, setReceiptLoading] = useState(false);
   const [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState(false);
   const { sections, students } = useReferenceData({ sections: true, students: canManage });
@@ -71,19 +68,6 @@ function InvoicesView({ canManage }) {
 
   const fees = overview.data?.fees || {};
   const isFamily = !canManage;
-
-  const openReceipt = async (invoice) => {
-    setReceiptLoading(true);
-    setReceipt({ invoice });
-    try {
-      setReceipt(await api.get(`/finance/invoices/${invoice.uuid}/receipt/`));
-    } catch (error) {
-      toast.error(error.message);
-      setReceipt(null);
-    } finally {
-      setReceiptLoading(false);
-    }
-  };
 
   const remove = async () => {
     setBusy(true);
@@ -139,7 +123,7 @@ function InvoicesView({ canManage }) {
       <Card flush>
         <div className="filters" style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)" }}>
           <SearchInput value={search} onChange={setSearch} placeholder="Search invoice or student…" />
-          <select className="select" value={status} onChange={(event) => setStatus(event.target.value)}>
+          <select className="select" aria-label="Filter by status" value={status} onChange={(event) => setStatus(event.target.value)}>
             <option value="">All statuses</option>
             <option value="unpaid">Unpaid</option>
             <option value="partial">Partially paid</option>
@@ -148,7 +132,7 @@ function InvoicesView({ canManage }) {
           </select>
           {canManage ? (
             <>
-              <select className="select" value={section} onChange={(event) => setSection(event.target.value)}>
+              <select className="select" aria-label="Filter by section" value={section} onChange={(event) => setSection(event.target.value)}>
                 <option value="">All sections</option>
                 {sections.map((item) => <option key={item.uuid} value={item.uuid}>{item.display_name}</option>)}
               </select>
@@ -193,7 +177,7 @@ function InvoicesView({ canManage }) {
                       <td className="cell-sub">{formatDate(invoice.due_date)}</td>
                       <td><StatusBadge status={invoice.effective_status || invoice.status} /></td>
                       <td className="actions">
-                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => openReceipt(invoice)}><FileText size={13} /> View</button>
+                        <Link className="btn btn-secondary btn-sm" to={`/invoices/${invoice.uuid}`}><FileText size={13} /> View</Link>
                         {canManage && Number(invoice.balance) > 0 && invoice.status !== "cancelled" ? (
                           <button type="button" className="btn btn-primary btn-sm" onClick={() => setPaying(invoice)}><Wallet size={13} /> Pay</button>
                         ) : null}
@@ -223,13 +207,12 @@ function InvoicesView({ canManage }) {
 
       <InvoiceFormModal open={formOpen} onClose={() => setFormOpen(false)} invoice={editing} students={students} onSaved={() => { setFormOpen(false); list.reload(); overview.reload(); }} />
       <PaymentModal invoice={paying} onClose={() => setPaying(null)} onSaved={() => { setPaying(null); list.reload(); overview.reload(); }} />
-      <ReceiptModal receipt={receipt} loading={receiptLoading} onClose={() => setReceipt(null)} />
       <ConfirmDialog open={Boolean(deleting)} onClose={() => setDeleting(null)} onConfirm={remove} busy={busy} title="Delete this invoice?" message={`${deleting?.invoice_number} will be removed. Invoices with payments cannot be deleted.`} confirmLabel="Delete invoice" />
     </>
   );
 }
 
-function InvoiceFormModal({ open, onClose, invoice, students, onSaved }) {
+export function InvoiceFormModal({ open, onClose, invoice, students, onSaved }) {
   const toast = useToast();
   const [form, setForm] = useState({ student: "", title: "", amount: "", due_date: todayISO(), notes: "" });
   const [error, setError] = useState(null);
@@ -298,7 +281,7 @@ function InvoiceFormModal({ open, onClose, invoice, students, onSaved }) {
   );
 }
 
-function PaymentModal({ invoice, onClose, onSaved }) {
+export function PaymentModal({ invoice, onClose, onSaved }) {
   const toast = useToast();
   const [form, setForm] = useState({ amount: "", method: "cash", reference: "", notes: "" });
   const [error, setError] = useState(null);
@@ -352,86 +335,6 @@ function PaymentModal({ invoice, onClose, onSaved }) {
           <input className="input" value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} />
         </Field>
       </form>
-    </Modal>
-  );
-}
-
-function ReceiptModal({ receipt, loading, onClose }) {
-  return (
-    <Modal
-      open={Boolean(receipt)}
-      onClose={onClose}
-      title="Invoice statement"
-      size="modal-lg"
-      footer={
-        <>
-          <button type="button" className="btn btn-secondary" onClick={onClose}>Close</button>
-          <button type="button" className="btn btn-primary" onClick={() => window.print()} disabled={loading}><Printer size={15} /> Print</button>
-        </>
-      }
-    >
-      {loading ? <Loading /> : receipt ? (
-        <div className="receipt">
-          <div className="receipt-head">
-            <div>
-              <h3>{receipt.school || "School ERP"}</h3>
-              <p style={{ color: "var(--muted)", fontSize: 12 }}>Official fee statement</p>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontWeight: 700 }}>{receipt.invoice?.invoice_number}</div>
-              <div style={{ fontSize: 12, color: "var(--muted)" }}>Issued {formatDate(receipt.invoice?.created_at)}</div>
-            </div>
-          </div>
-          <div className="grid-2" style={{ marginBottom: 14 }}>
-            <div>
-              <div className="cell-sub" style={{ textTransform: "uppercase", letterSpacing: ".07em", fontSize: 10, fontWeight: 700 }}>Billed to</div>
-              <div style={{ fontWeight: 650 }}>{receipt.invoice?.student_name}</div>
-              <div style={{ fontSize: 12, color: "var(--muted)" }}>{receipt.invoice?.student_code} · {receipt.invoice?.class_name || ""} {receipt.invoice?.section_name || ""}</div>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <div className="cell-sub">Due date</div>
-              <div style={{ fontWeight: 650 }}>{formatDate(receipt.invoice?.due_date)}</div>
-              <StatusBadge status={receipt.invoice?.effective_status || receipt.invoice?.status} />
-            </div>
-          </div>
-
-          <div className="table-wrap">
-            <table className="table table-compact">
-              <thead><tr><th>Item</th><th className="num">Amount</th></tr></thead>
-              <tbody>
-                <tr><td>{receipt.invoice?.title}</td><td className="num">{money(receipt.invoice?.amount)}</td></tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div style={{ marginTop: 14 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)", marginBottom: 6 }}>Payments</div>
-            {receipt.payments?.length ? (
-              <div className="table-wrap">
-                <table className="table table-compact">
-                  <thead><tr><th>Receipt</th><th>Method</th><th>Date</th><th className="num">Amount</th></tr></thead>
-                  <tbody>
-                    {receipt.payments.map((payment) => (
-                      <tr key={payment.uuid}>
-                        <td>{payment.receipt_number}</td>
-                        <td>{payment.method?.replace("_", " ")}</td>
-                        <td className="cell-sub">{formatDateTime(payment.paid_at)}</td>
-                        <td className="num">{money(payment.amount)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : <p style={{ fontSize: 12, color: "var(--muted)" }}>No payments recorded.</p>}
-          </div>
-
-          <div className="receipt-total">
-            <span>Balance due</span>
-            <span>{money(receipt.invoice?.balance)}</span>
-          </div>
-          <p className="help" style={{ marginTop: 14 }}>Thank you for your prompt payment. Keep this statement for your records.</p>
-        </div>
-      ) : <EmptyState icon={Receipt} title="Receipt unavailable" />}
     </Modal>
   );
 }

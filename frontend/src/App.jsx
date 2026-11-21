@@ -9,19 +9,23 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Students from "./pages/Students";
+import StudentDetail from "./pages/StudentDetail";
 import Teachers from "./pages/Teachers";
 import Classes from "./pages/Classes";
 import Subjects from "./pages/Subjects";
 import Timetable from "./pages/Timetable";
 import Attendance from "./pages/Attendance";
 import Exams from "./pages/Exams";
+import ExamWorkspace, { ExamMarksPage } from "./pages/ExamWorkspace";
 import Results from "./pages/Results";
 import Fees from "./pages/Fees";
 import Invoices from "./pages/Invoices";
+import InvoiceDetail from "./pages/InvoiceDetail";
 import Payments from "./pages/Payments";
 import Checkout from "./pages/Checkout";
 import Announcements from "./pages/Announcements";
 import Users from "./pages/Users";
+import UserDetail from "./pages/UserDetail";
 import Roles from "./pages/Roles";
 import Audit from "./pages/Audit";
 import Profile from "./pages/Profile";
@@ -114,6 +118,15 @@ export default function App() {
         />
 
         <Route
+          path="students/:uuid"
+          element={
+            <RequireRole roles={["Admin", "Teacher", "Accountant"]}>
+              <StudentDetail />
+            </RequireRole>
+          }
+        />
+
+        <Route
           path="teachers"
           element={
             <RequireRole roles={["Admin"]}>
@@ -127,6 +140,15 @@ export default function App() {
           element={
             <RequireRole roles={["Admin"]}>
               <Users />
+            </RequireRole>
+          }
+        />
+
+        <Route
+          path="users/:uuid"
+          element={
+            <RequireRole roles={["Admin"]}>
+              <UserDetail />
             </RequireRole>
           }
         />
@@ -150,9 +172,19 @@ export default function App() {
         />
 
         <Route path="classes" element={<Classes />} />
+        <Route path="sections" element={<Classes />} />
 
         <Route
           path="subjects"
+          element={
+            <RequireRole roles={["Admin", "Teacher", "Student", "Parent"]}>
+              <Subjects />
+            </RequireRole>
+          }
+        />
+
+        <Route
+          path="subjects/assignments"
           element={
             <RequireRole roles={["Admin", "Teacher", "Student", "Parent"]}>
               <Subjects />
@@ -172,10 +204,46 @@ export default function App() {
         />
 
         <Route
+          path="attendance/records"
+          element={
+            <RequireRole roles={["Admin", "Teacher", "Student", "Parent"]}>
+              <Attendance />
+            </RequireRole>
+          }
+        />
+
+        <Route
           path="exams"
           element={
             <RequireRole roles={["Admin", "Teacher"]}>
               <Exams />
+            </RequireRole>
+          }
+        />
+
+        <Route
+          path="exams/:uuid"
+          element={
+            <RequireRole roles={["Admin", "Teacher"]}>
+              <ExamWorkspace view="papers" />
+            </RequireRole>
+          }
+        />
+
+        <Route
+          path="exams/:uuid/analytics"
+          element={
+            <RequireRole roles={["Admin", "Teacher"]}>
+              <ExamWorkspace view="analytics" />
+            </RequireRole>
+          }
+        />
+
+        <Route
+          path="exams/:uuid/papers/:paperUuid"
+          element={
+            <RequireRole roles={["Admin", "Teacher"]}>
+              <ExamMarksPage />
             </RequireRole>
           }
         />
@@ -199,10 +267,28 @@ export default function App() {
         />
 
         <Route
+          path="fees/categories"
+          element={
+            <RequireRole roles={["Admin", "Accountant"]}>
+              <Fees />
+            </RequireRole>
+          }
+        />
+
+        <Route
           path="invoices"
           element={
             <RequireRole roles={["Admin", "Accountant", "Student", "Parent"]}>
               <Invoices />
+            </RequireRole>
+          }
+        />
+
+        <Route
+          path="invoices/:uuid"
+          element={
+            <RequireRole roles={["Admin", "Accountant", "Student", "Parent"]}>
+              <InvoiceDetail />
             </RequireRole>
           }
         />

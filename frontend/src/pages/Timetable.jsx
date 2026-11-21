@@ -75,7 +75,7 @@ export default function Timetable() {
       <Card flush>
         <div className="filters" style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)" }}>
           <CalendarDays size={17} style={{ color: "var(--muted)" }} />
-          <select className="select" value={section} onChange={(event) => setSection(event.target.value)}>
+          <select className="select" aria-label="Select a section" value={section} onChange={(event) => setSection(event.target.value)}>
             <option value="">Select a section…</option>
             {sections.map((item) => <option key={item.uuid} value={item.uuid}>{item.display_name}</option>)}
           </select>

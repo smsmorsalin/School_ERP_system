@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { CalendarClock, FilePlus2, Layers, Pencil, Plus, Receipt, Tags, Trash2, Wallet } from "lucide-react";
 import { useToast } from "../context/ToastContext";
 import { api } from "../lib/api";
@@ -22,15 +23,20 @@ import {
 } from "../components/ui";
 
 export default function Fees() {
-  usePageTitle("Fees");
-  const [tab, setTab] = useState("structures");
+  const location = useLocation();
+  const navigate = useNavigate();
+  const tab = location.pathname.endsWith("/categories") ? "categories" : "structures";
+  usePageTitle(tab === "categories" ? "Fee categories" : "Fee structures");
   return (
     <>
-      <PageHeader title="Fee setup" subtitle="Define fee categories and what each class is billed" />
+      <PageHeader
+        title={tab === "categories" ? "Fee categories" : "Fee structures"}
+        subtitle={tab === "categories" ? "The billing items available when building class fees" : "What each class is billed, and when it is due"}
+      />
       <Tabs
         tabs={[{ value: "structures", label: "Fee structures" }, { value: "categories", label: "Categories" }]}
         value={tab}
-        onChange={setTab}
+        onChange={(value) => navigate(value === "categories" ? "/fees/categories" : "/fees")}
       />
       {tab === "structures" ? <StructuresTab /> : <CategoriesTab />}
     </>
@@ -78,8 +84,8 @@ function CategoriesTab() {
                       <td className="cell-sub">{item.description || "—"}</td>
                       <td><Badge tone={item.is_active ? "green" : "neutral"}>{item.is_active ? "Active" : "Inactive"}</Badge></td>
                       <td className="actions">
-                        <button type="button" className="icon-btn" onClick={() => { setEditing(item); setFormOpen(true); }}><Pencil size={15} /></button>
-                        <button type="button" className="icon-btn danger" onClick={() => setDeleting(item)}><Trash2 size={15} /></button>
+                        <button type="button" className="icon-btn" aria-label="Edit" onClick={() => { setEditing(item); setFormOpen(true); }}><Pencil size={15} /></button>
+                        <button type="button" className="icon-btn danger" aria-label="Delete" onClick={() => setDeleting(item)}><Trash2 size={15} /></button>
                       </td>
                     </tr>
                   ))}
@@ -180,7 +186,7 @@ function StructuresTab() {
     <>
       <Card flush>
         <div className="filters" style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)" }}>
-          <select className="select" value={schoolClass} onChange={(event) => setSchoolClass(event.target.value)}>
+          <select className="select" aria-label="Filter by class" value={schoolClass} onChange={(event) => setSchoolClass(event.target.value)}>
             <option value="">All classes</option>
             {classes.map((item) => <option key={item.uuid} value={item.uuid}>{item.name}</option>)}
           </select>
@@ -205,8 +211,8 @@ function StructuresTab() {
                         <button type="button" className="btn btn-secondary btn-sm" onClick={() => setGenerating(item)} title="Generate invoices">
                           <FilePlus2 size={13} /> Generate
                         </button>
-                        <button type="button" className="icon-btn" onClick={() => { setEditing(item); setFormOpen(true); }}><Pencil size={15} /></button>
-                        <button type="button" className="icon-btn danger" onClick={() => setDeleting(item)}><Trash2 size={15} /></button>
+                        <button type="button" className="icon-btn" aria-label="Edit" onClick={() => { setEditing(item); setFormOpen(true); }}><Pencil size={15} /></button>
+                        <button type="button" className="icon-btn danger" aria-label="Delete" onClick={() => setDeleting(item)}><Trash2 size={15} /></button>
                       </td>
                     </tr>
                   ))}
@@ -370,7 +376,7 @@ function GenerateInvoicesModal({ structure, onClose }) {
       </div>
       <form id="generate-form" onSubmit={submit}>
         <Field label="Section" hint="Leave blank to bill every active student in the class.">
-          <select className="select" value={section} onChange={(event) => setSection(event.target.value)}>
+          <select className="select" aria-label="Filter by section" value={section} onChange={(event) => setSection(event.target.value)}>
             <option value="">All sections</option>
             {options.map((item) => <option key={item.uuid} value={item.uuid}>{item.display_name}</option>)}
           </select>

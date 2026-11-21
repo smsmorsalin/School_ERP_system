@@ -1,0 +1,3 @@
+# School ERP is a private management console, not a public website.
+User-agent: *
+Disallow: /

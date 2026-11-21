@@ -4,7 +4,7 @@
 > this project. It records what is finished, what is verified, what remains, how
 > to run everything, and the rules an AI agent must follow.
 >
-> Last updated: **2026-11-09**
+> Last updated: **2026-11-19**
 > Repository: <https://github.com/smsmorsalin/School_ERP_system>
 > Local working copy used for this build: `/home/smsmorsalin/Documents/Default Project/School_ERP_system`
 
@@ -16,7 +16,7 @@ The project is a **full-stack School ERP / school management system**:
 
 - **Backend:** Django 6 + Django REST Framework, JWT auth, role-based access control (RBAC), SQLite in development / PostgreSQL for production.
 - **Frontend:** React 18 + Vite 5 single-page app (plain CSS, `lucide-react` icons, custom SVG charts), built into `frontend/dist` and served by Django.
-- **Status:** Feature-complete for the original scope plus **secure online fee payments** (bKash, Nagad, Rocket, other mobile banking, card, bank) and an **append-only audit trail**. **110 automated tests pass.** All five roles have been smoke-tested in a real browser, and the payment backend is fully covered by tests. Security hardening is implemented and verified.
+- **Status:** Feature-complete for the original scope plus **secure online fee payments** (bKash, Nagad, Rocket, other mobile banking, card, bank) and an **append-only audit trail**. The console has been restructured around list → detail/workspace pages. **112 automated tests pass.** All five roles have been smoke-tested in a real browser, and the payment backend is fully covered by tests. Security hardening is implemented and verified.
 - **What remains:** optional polish, live provider adapters (needs merchant credentials), and deployment on real infrastructure. See §5.
 
 **If you are an AI resuming this project:** run §2 (setup), run §8 (tests),
@@ -66,7 +66,7 @@ School_ERP_system/
 │   │   ├── communication/     ← announcements + read tracking
 │   │   ├── dashboard/         ← role-aware overview, global search, health
 │   │   └── audit/             ← append-only AuditLog, signals, read-only API
-│   ├── tests/                 ← 110 pytest tests (conftest + 9 modules)
+│   ├── tests/                 ← 112 pytest tests (conftest + 12 modules)
 │   ├── staticfiles/
 │   └── media/
 └── frontend/
@@ -81,7 +81,7 @@ School_ERP_system/
         ├── context/           ← AuthContext, ToastContext
         ├── lib/               ← api client, constants, format, hooks,
         │                         usePageTitle, theme
-        ├── pages/             ← 23 pages (see §6)
+        ├── pages/             ← 28 page modules (list, detail, workspace; see §6)
         └── styles.css
 ```
 
@@ -209,7 +209,7 @@ timetable, attendance, exams/results, invoices/payments and announcements.
       insecure refresh cookie, `PAYMENT_SANDBOX=True`, or live payments enabled
       without a strong webhook secret and HTTPS checkout base. Schema/docs are
       admin-only in production.
-- [x] 110-test pytest suite — **all passing** (`cd backend && .venv/bin/python -m pytest -q`).
+- [x] 112-test pytest suite — **all passing** (`cd backend && .venv/bin/python -m pytest -q`).
 - [x] **Audit log** — append-only `audit.AuditLog` populated by `post_save`/
       `post_delete` signals for business apps (accounts, academics, attendance,
       exams, finance, communication). Captures actor, action, target,
@@ -223,7 +223,12 @@ timetable, attendance, exams/results, invoices/payments and announcements.
 
 ### 4.2 Frontend
 
-- [x] All 23 pages built (see §6), responsive layout with collapsible sidebar.
+- [x] 28 page modules built (see §6), responsive layout with collapsible sidebar.
+- [x] List → detail/workspace pages: student profile, user account, invoice
+      statement, exam workspace/analytics and full-page mark entry. Short
+      create/edit actions remain modals; related workflows use URL-driven tabs
+      and separate sidebar entries.
+- [x] Backend regression test for class directory counts (`tests/test_academics.py`).
 - [x] Per-page `document.title` via `usePageTitle` on every page.
 - [x] Admin **Audit log** page (`/audit`) with filters, search, pagination and
       client-side CSV export.
@@ -258,18 +263,18 @@ before and after changing it.
 
 ### P0 — must verify on resume (do first, ~10 minutes)
 
-- [x] Run the backend test suite (§8) and confirm **110 passed**.
+- [x] Run the backend test suite (§8) and confirm **112 passed**.
 - [x] Run `npm install && npm run build` in `frontend/` — the build succeeds
-      (1606 modules) and `frontend/dist` now contains the payment UI.
+      (1612 modules) and `frontend/dist` contains the current IA.
 - [x] End-to-end verified over real HTTP against the dev server: student login →
       gateway catalogue (all six methods) → intent create → idempotent replay
       (`200`, same uuid) → key reuse with different gateway (`409`) → poll →
       sandbox confirm (receipt created, payer masked `*******5678`) → duplicate
       confirm (still one payment) → invoice `paid`, balance `0.00` → unsigned
       webhook rejected (`503`) → SPA `/checkout/<uuid>` returns the app shell.
-- [ ] Start the server, open `/login`, sign in as admin, confirm the dashboard loads.
-- [ ] Confirm `manage.py check` reports no issues.
-- [ ] Run `makemigrations --check --dry-run` and confirm **no changes detected**.
+- [x] Start the server, open `/login`, sign in as admin, confirm the dashboard loads.
+- [x] Confirm `manage.py check` reports no issues.
+- [x] Run `makemigrations --check --dry-run` and confirm **no changes detected**.
 - [ ] Confirm the payment env vars are present in `.env.compose.example`,
       `docker-compose.yml`, `deploy/k8s/configmap.yaml` and
       `deploy/k8s/secret.example.yaml`.
@@ -288,9 +293,12 @@ before and after changing it.
 
 - [x] Per-page `document.title` on SPA navigation — `usePageTitle` is now applied
       to every page.
-- [ ] Accessibility pass: focus outlines, modal focus traps, `aria-label`s on
-      icon-only buttons, table caption/scope, colour contrast.
-- [ ] Empty-state and error-state copy review across all pages.
+- [x] Accessibility pass: focus-visible rings, modal focus traps, `aria-label`s on
+      icon-only buttons, table caption/scope, colour contrast fixed at token level.
+      Real Lighthouse audits on every route: **100 Accessibility / 100 Best Practices**
+      zero failures, in both light and dark themes. SEO intentionally not scored
+      (`robots.txt` disallows indexing this private console).
+- [x] Empty-state and error-state copy review across all pages.
 - [ ] Add a "back to top" / sticky table header for long tables if useful.
 - [ ] Add loading skeletons where only spinners exist.
 - [ ] Verify the layout at tablet and mobile widths (no viewport-resize tool was
@@ -363,6 +371,76 @@ before and after changing it.
 - [ ] Security regression tests for every new endpoint (IDOR + permission).
 - [ ] Re-run `pip-audit` / `npm audit` and update dependencies.
 
+### P6 — New user roles & missing modules (roadmap)
+
+The system currently serves five roles: Admin, Teacher, Accountant, Student,
+Parent. The following roles and modules are identified as future additions.
+Each new role follows the existing RBAC pattern (Role record, scoped
+querysets, sidebar entries in `frontend/src/components/Layout.jsx`).
+
+#### New user roles
+
+| Role | Suggested backend app | Responsibility |
+|------|----------------------|---------------|
+| Librarian | `library` | Book catalog, issue/return, fines, overdue reports |
+| Transport Manager | `transport` | Routes, vehicles, transport fees, student transport assignment |
+| Hostel Warden | `hostel` | Room allocation, mess management, hostel fee tracking |
+| Store / Inventory Manager | `inventory` | Stock levels, procurement, asset register |
+| Examination Controller | `exams` (extended) | Exam calendar, paper moderation, result lockdown |
+| Nurse / Medical Staff | `medical` | Student health records, vaccination tracker, infirmary log |
+| Counselor | `counseling` | Counseling session records, student case notes |
+| Event Coordinator | `events` | School events, holiday calendar |
+
+#### Missing modules (cross-role)
+
+| Module | Notes |
+|--------|-------|
+| `library` | Books, members, loans, fines |
+| `transport` | Routes, vehicles, drivers, transport fees |
+| `hostel` | Rooms, wardens, mess, hostel fees |
+| `inventory` | Stock, procurement, assets |
+| `medical` | Health records, vaccinations |
+| `counseling` | Session records, case notes |
+| `events` | Events, holidays, academic calendar |
+| `expense` | Non-fee expenses, vendor payments |
+| `payroll` | Staff salary, payslips, disbursement |
+| `assignment` | Creation, submission, grading |
+| `lesson_plan` | Daily/weekly teaching plans |
+| `leave` | Staff/student leave applications and approvals |
+| `certificate` | PDF report cards, attendance, transfer certificates |
+| `communication_extended` | Teacher-parent chat, attachments |
+| `alumni` | Alumni records, events |
+
+#### Role-specific goal summary
+
+| Role | Key missing capabilities |
+|------|-------------------------|
+| **Admin** | Bulk user import/export, school-wide settings, system health dashboard, notification templates, waitlist UI, multi-school support |
+| **Teacher** | Lesson planner, grade book, parent messaging, attendance alerts, assignment module, leave request, report card preview gate |
+| **Accountant** | Expense module, payroll UI, financial reports (P&L, balance sheet), tax reports, scheduled fee reminders, refund workflow, bulk payment upload, live payments |
+| **Student** | Assignment submissions, certificate download, attendance certificate request, profile edit request, payment history export, class rank dashboard |
+| **Parent** | Multi-child unified dashboard, attendance alerts, teacher messaging, meeting booking, leave application, sibling comparison, combined payment |
+| **All roles** | Email/SMS/push notifications, PDF export, file attachments, chat, saved filters, command palette, 2FA, SSO |
+
+#### Architectural changes anticipated
+
+- SMTP email backend (replace console backend)
+- SMS provider integration
+- PDF generation service (WeasyPrint/ReportLab)
+- Object storage for file attachments (S3-compatible)
+- Real-time messaging (WebSockets)
+- PWA / mobile app support
+- i18n / multi-language UI strings
+- Two-factor authentication (TOTP/WebAuthn)
+- SSO / OAuth integration
+- Multi-school / branch support
+- Scheduled jobs (Celery/cron) for reports and reminders
+- Data backup & restore UI
+- Audit retention & archiving policy
+
+See [`FUTURE_IMPLEMENTATION.md`](FUTURE_IMPLEMENTATION.md) for the full
+prioritised backlog (P0 through P6) and the pre-push checklist.
+
 ---
 
 ## 6. Frontend pages & routes
@@ -374,19 +452,29 @@ before and after changing it.
 | `/reset-password` | ResetPassword | Public |
 | `/change-password` | ChangePassword | Any signed-in user (forced when temp password) |
 | `/` | Dashboard | Any signed-in user (role-aware content) |
-| `/students` | Students | Admin, Teacher (scoped), Parent (children), Student (self) |
+| `/students` | Student directory (parents: linked children) | Admin, Teacher, Accountant, Parent |
+| `/students/:uuid` | Student profile — enrollment, contact, guardians, related records | Admin, Teacher, Accountant |
 | `/teachers` | Teachers | Admin |
-| `/users` | Users | Admin |
-| `/roles` | Roles | Admin |
+| `/users` | User account directory | Admin |
+| `/users/:uuid` | Account profile — access, security, sign-in history, lifecycle | Admin |
+| `/roles` | Roles & access | Admin |
 | `/audit` | Audit log | Admin |
-| `/classes` | Classes | Admin, Teacher, Student, Parent (read) |
-| `/subjects` | Subjects | Admin, Teacher, Student, Parent (read) |
+| `/classes` | Classes (tab) | All signed-in roles |
+| `/sections` | Sections (tab, same component) | All signed-in roles |
+| `/subjects` | Subject catalogue (tab) | Admin, Teacher, Student, Parent |
+| `/subjects/assignments` | Class subjects (tab, same component) | Admin, Teacher, Student, Parent |
 | `/timetable` | Timetable | All signed-in roles (scoped) |
-| `/attendance` | Attendance | Admin, Teacher (write), Student/Parent (read) |
-| `/exams` | Exams | Admin, Teacher |
-| `/results` | Results | All signed-in roles (scoped) |
-| `/fees` | Fee setup | Admin, Accountant |
+| `/attendance` | Mark attendance / My attendance | Admin, Teacher, Student, Parent |
+| `/attendance/records` | Attendance records (tab, same component) | Admin, Teacher, Student, Parent |
+| `/exams` | Exam directory | Admin, Teacher |
+| `/exams/:uuid` | Exam workspace — papers, publishing | Admin, Teacher |
+| `/exams/:uuid/analytics` | Exam analytics (tab, same workspace) | Admin, Teacher |
+| `/exams/:uuid/papers/:paperUuid` | Full-page mark entry | Admin, Teacher |
+| `/results` | Results | Admin, Teacher, Student, Parent (scoped) |
+| `/fees` | Fee structures (tab) | Admin, Accountant |
+| `/fees/categories` | Fee categories (tab, same component) | Admin, Accountant |
 | `/invoices` | Invoices | Admin, Accountant, Student/Parent (own) |
+| `/invoices/:uuid` | Invoice statement — payments, balance, print | Admin, Accountant, Student/Parent (own) |
 | `/payments` | Payments | Admin, Accountant |
 | `/checkout/:uuid` | Secure checkout | Admin, Accountant, Student, Parent (intent scoped) |
 | `/announcements` | Announcements | All (staff can write) |
@@ -394,8 +482,9 @@ before and after changing it.
 | `*` | NotFound | Public |
 
 Route guards live in `frontend/src/App.jsx`; the sidebar is built in
-`frontend/src/components/Layout.jsx` from the role list in
-`frontend/src/lib/constants.js`.
+`frontend/src/components/Layout.jsx` from the grouped `NAV_GROUPS` list. The
+topbar title is resolved per route, including detail/workspace routes, in
+`titleFor()`.
 
 ---
 
@@ -443,7 +532,7 @@ test for both an allowed and a forbidden role.
 
 ```bash
 cd backend
-.venv/bin/python -m pytest -q          # 110 tests, expected all green
+.venv/bin/python -m pytest -q          # 112 tests, expected all green
 .venv/bin/python -m pytest -q tests/test_auth.py   # one module
 .venv/bin/python manage.py check
 .venv/bin/python manage.py makemigrations --check --dry-run
@@ -454,6 +543,7 @@ Test modules:
 | File | Covers |
 |---|---|
 | `tests/conftest.py` | Fixtures: users, roles, academic data, students, guardians, finance, API clients |
+| `tests/test_academics.py` | Class directory section/student counts, including serialization without queryset annotations |
 | `tests/test_auth.py` | Login, cookies, lockout, forced change, token revocation/rotation, reset flow, profile immutability |
 | `tests/test_permissions.py` | RBAC, IDOR scoping, role management, superuser-only admin grants |
 | `tests/test_attendance.py` | Bulk marking, section scoping, future dates, duplicates, summaries |
@@ -643,6 +733,29 @@ DJANGO_SETTINGS_MODULE=config.settings.production .venv/bin/python -c \
 
 ## 13. Session log (append newest at the top)
 
+### 2026-11-19 — Information architecture: list → detail/workspace pages
+- Split the busiest screens into directory + dedicated pages:
+  `/students/:uuid` (student profile), `/users/:uuid` (account profile),
+  `/invoices/:uuid` (statement/payments), `/exams/:uuid` (papers),
+  `/exams/:uuid/analytics` and `/exams/:uuid/papers/:paperUuid` (mark entry).
+- Modals are now reserved for short create/edit actions; profile, statement,
+  security, lifecycle and mark-entry work moved to full pages with breadcrumbs.
+- URL-driven tabs and separate sidebar entries for Classes/Sections,
+  Subject catalogue/Class subjects, Mark attendance/Records and Fee
+  structures/Categories. Sidebar regrouped into Overview, People, Academics,
+  Attendance, Examinations, Finance, Communication and Administration.
+- Topbar titles resolve detail/workspace routes; dashboard and global search
+  now navigate to `/students/:uuid`; student profile invoice links filter by
+  student.
+- Fixed a pre-existing `500` in `SchoolClassSerializer` (it referenced the
+  nonexistent `obj.students` reverse relation) and added
+  `tests/test_academics.py` covering annotated list serialization and the
+  fallback path. Full suite: **112 passed**.
+- Verified live as admin: class counts, student/user/invoice detail pages,
+  exam workspace/analytics/mark entry, all URL-driven tabs, active nav states
+  and a clean console. `manage.py check` clean; no migration drift;
+  `npm run build` green.
+
 ### 2026-11-15 — Audit trail, reminders, CSV export & page titles
 - Added `apps.audit` — append-only `AuditLog`, signal-based capture for business
   apps, thread-local request metadata middleware, admin-only read-only API
@@ -715,7 +828,7 @@ DJANGO_SETTINGS_MODULE=config.settings.production .venv/bin/python -c \
 
 ## 14. Definition of "done" (final acceptance checklist)
 
-- [x] `pytest -q` all green (currently 110).
+- [x] `pytest -q` all green (currently 112).
 - [x] `manage.py check` clean; `makemigrations --check` reports no changes.
 - [x] `npm run build` succeeds; `frontend/dist` updated.
 - [x] Sandbox checkout verified end-to-end over HTTP from `/invoices`

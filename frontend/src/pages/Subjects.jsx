@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { BookMarked, Link2, Pencil, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { usePageTitle } from "../lib/usePageTitle";
@@ -24,13 +25,22 @@ import {
 } from "../components/ui";
 
 export default function Subjects() {
-  usePageTitle("Subjects");
   const { isAdmin } = useAuth();
-  const [tab, setTab] = useState("subjects");
+  const location = useLocation();
+  const navigate = useNavigate();
+  const tab = location.pathname.endsWith("/assignments") ? "assignments" : "subjects";
+  usePageTitle(tab === "assignments" ? "Class subjects" : "Subjects");
   return (
     <>
-      <PageHeader title="Subjects" subtitle="Curriculum subjects and class assignments" />
-      <Tabs tabs={[{ value: "subjects", label: "Subjects" }, { value: "assignments", label: "Class assignments" }]} value={tab} onChange={setTab} />
+      <PageHeader
+        title={tab === "assignments" ? "Class subjects" : "Subjects"}
+        subtitle={tab === "assignments" ? "Which subjects each section studies, and who teaches them" : "The curriculum catalogue used across the school"}
+      />
+      <Tabs
+        tabs={[{ value: "subjects", label: "Subject catalogue" }, { value: "assignments", label: "Class assignments" }]}
+        value={tab}
+        onChange={(value) => navigate(value === "assignments" ? "/subjects/assignments" : "/subjects")}
+      />
       {tab === "subjects" ? <SubjectsTab canManage={isAdmin} /> : <AssignmentsTab canManage={isAdmin} />}
     </>
   );
@@ -91,8 +101,8 @@ function SubjectsTab({ canManage }) {
                       <td><Badge tone={subject.is_active ? "green" : "neutral"}>{subject.is_active ? "Active" : "Inactive"}</Badge></td>
                       {canManage ? (
                         <td className="actions">
-                          <button type="button" className="icon-btn" onClick={() => { setEditing(subject); setFormOpen(true); }}><Pencil size={15} /></button>
-                          <button type="button" className="icon-btn danger" onClick={() => setDeleting(subject)}><Trash2 size={15} /></button>
+                          <button type="button" className="icon-btn" aria-label="Edit subject" onClick={() => { setEditing(subject); setFormOpen(true); }}><Pencil size={15} /></button>
+                          <button type="button" className="icon-btn danger" aria-label="Delete subject" onClick={() => setDeleting(subject)}><Trash2 size={15} /></button>
                         </td>
                       ) : null}
                     </tr>
@@ -205,7 +215,7 @@ function AssignmentsTab({ canManage }) {
     <>
       <Card flush>
         <div className="filters" style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)" }}>
-          <select className="select" value={section} onChange={(event) => setSection(event.target.value)}>
+          <select className="select" aria-label="Filter by section" value={section} onChange={(event) => setSection(event.target.value)}>
             <option value="">All sections</option>
             {sections.map((item) => <option key={item.uuid} value={item.uuid}>{item.display_name}</option>)}
           </select>
@@ -233,8 +243,8 @@ function AssignmentsTab({ canManage }) {
                       <td><Badge tone={item.is_active ? "green" : "neutral"}>{item.is_active ? "Active" : "Inactive"}</Badge></td>
                       {canManage ? (
                         <td className="actions">
-                          <button type="button" className="icon-btn" onClick={() => { setEditing(item); setFormOpen(true); }}><Pencil size={15} /></button>
-                          <button type="button" className="icon-btn danger" onClick={() => setDeleting(item)}><Trash2 size={15} /></button>
+                          <button type="button" className="icon-btn" aria-label="Edit class subject" onClick={() => { setEditing(item); setFormOpen(true); }}><Pencil size={15} /></button>
+                          <button type="button" className="icon-btn danger" aria-label="Delete class subject" onClick={() => setDeleting(item)}><Trash2 size={15} /></button>
                         </td>
                       ) : null}
                     </tr>

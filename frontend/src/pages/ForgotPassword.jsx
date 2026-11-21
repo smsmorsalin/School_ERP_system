@@ -35,7 +35,7 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="auth-page" style={{ display: "grid", placeItems: "center", minHeight: "100vh" }}>
+    <main className="auth-page" style={{ display: "grid", placeItems: "center", minHeight: "100vh" }}>
       <div className="card" style={{ width: "100%", maxWidth: 460 }}>
         <div className="card-body" style={{ padding: 28 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 22 }}>
@@ -99,6 +99,6 @@ export default function ForgotPassword() {
           )}
         </div>
       </div>
-    </div>
+    </main>
   );
 }

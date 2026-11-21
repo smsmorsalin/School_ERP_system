@@ -1,12 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
-  CalendarDays,
   Download,
-  Droplets,
-  Mail,
   Pencil,
-  Phone,
   Plus,
   Search,
   Trash2,
@@ -101,12 +97,12 @@ export default function Students() {
 function StaffStudentsView() {
   const { isAdmin } = useAuth();
   const toast = useToast();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounced(search);
   const [status, setStatus] = useState("");
   const [section, setSection] = useState("");
-  const [detail, setDetail] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
@@ -128,22 +124,11 @@ function StaffStudentsView() {
       searchParams.delete("new");
       setSearchParams(searchParams, { replace: true });
     }
-    const uuid = searchParams.get("student");
-    if (uuid) {
-      api
-        .get(`/academics/students/${uuid}/`)
-        .then(setDetail)
-        .catch((error) => toast.error(error.message));
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const openDetail = async (student) => {
-    try {
-      setDetail(await api.get(`/academics/students/${student.uuid}/`));
-    } catch (error) {
-      toast.error(error.message);
-    }
+  const openDetail = (student) => {
+    navigate(`/students/${student.uuid}`);
   };
 
   const handleDelete = async () => {
@@ -205,13 +190,13 @@ function StaffStudentsView() {
       <Card flush>
         <div className="filters" style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)" }}>
           <SearchInput value={search} onChange={setSearch} placeholder="Search name, ID or email…" />
-          <select className="select" value={section} onChange={(event) => setSection(event.target.value)}>
+          <select className="select" aria-label="Filter by section" value={section} onChange={(event) => setSection(event.target.value)}>
             <option value="">All sections</option>
             {sections.map((item) => (
               <option key={item.uuid} value={item.uuid}>{item.display_name}</option>
             ))}
           </select>
-          <select className="select" value={status} onChange={(event) => setStatus(event.target.value)}>
+          <select className="select" aria-label="Filter by status" value={status} onChange={(event) => setStatus(event.target.value)}>
             <option value="">All statuses</option>
             {STUDENT_STATUSES.map((item) => (
               <option key={item.value} value={item.value}>{item.label}</option>
@@ -333,24 +318,6 @@ function StaffStudentsView() {
         )}
       </Card>
 
-      <StudentDetailModal
-        student={detail}
-        onClose={() => {
-          setDetail(null);
-          if (searchParams.get("student")) {
-            searchParams.delete("student");
-            setSearchParams(searchParams, { replace: true });
-          }
-        }}
-        canManage={isAdmin}
-        sections={sections}
-        onEdit={(student) => {
-          setDetail(null);
-          setEditing(student);
-          setFormOpen(true);
-        }}
-      />
-
       <StudentFormModal
         open={formOpen}
         onClose={() => setFormOpen(false)}
@@ -360,7 +327,6 @@ function StaffStudentsView() {
           setFormOpen(false);
           if (payload?.temporary_password) setCreatedCredentials(payload);
           else toast.success(editing ? "Student details updated." : "Student admitted successfully.");
-          if (detail) setDetail(null);
           list.reload();
         }}
       />
@@ -396,167 +362,9 @@ function StaffStudentsView() {
   );
 }
 
-/* ------------------------------------------------------------------ detail */
-function StudentDetailModal({ student, onClose, canManage, onEdit, sections }) {
-  const toast = useToast();
-  const [userDetail, setUserDetail] = useState(null);
-  const [parents, setParents] = useState([]);
-  const [guardianForm, setGuardianForm] = useState({ user: "", relation: "guardian", is_primary: false });
-  const [guardianBusy, setGuardianBusy] = useState(false);
-  const [localStudent, setLocalStudent] = useState(student);
-
-  useEffect(() => {
-    setLocalStudent(student);
-  }, [student]);
-
-  useEffect(() => {
-    if (!student?.user?.uuid) return;
-    if (canManage) {
-      api.get(`/accounts/users/${student.user.uuid}/`).then(setUserDetail).catch(() => {});
-      useAllParents(setParents);
-    }
-  }, [student?.user?.uuid, canManage]);
-
-  if (!localStudent) return null;
-
-  const addGuardian = async () => {
-    if (!guardianForm.user) return;
-    setGuardianBusy(true);
-    try {
-      await api.post(`/academics/students/${localStudent.uuid}/guardians/`, guardianForm);
-      toast.success("Guardian linked to the student.");
-      const updated = await api.get(`/academics/students/${localStudent.uuid}/`);
-      setLocalStudent(updated);
-      setGuardianForm({ user: "", relation: "guardian", is_primary: false });
-    } catch (error) {
-      toast.error(error.message);
-    } finally {
-      setGuardianBusy(false);
-    }
-  };
-
-  return (
-    <Modal
-      open={Boolean(localStudent)}
-      onClose={onClose}
-      title="Student profile"
-      subtitle={`${localStudent.student_id} · ${localStudent.class_name || "No class"}`}
-      size="modal-lg"
-      footer={
-        <>
-          <button type="button" className="btn btn-secondary" onClick={onClose}>Close</button>
-          {canManage ? (
-            <button type="button" className="btn btn-primary" onClick={() => onEdit(localStudent)}>
-              <Pencil size={15} /> Edit details
-            </button>
-          ) : null}
-        </>
-      }
-    >
-      <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 18, flexWrap: "wrap" }}>
-        <Avatar name={localStudent.user?.full_name} src={localStudent.user?.profile_image_url} size="lg" />
-        <div style={{ flex: 1, minWidth: 180 }}>
-          <h3 style={{ fontSize: 19 }}>{localStudent.user?.full_name}</h3>
-          <div style={{ color: "var(--muted)", fontSize: 12.5 }}>{localStudent.user?.email}</div>
-          <div style={{ display: "flex", gap: 6, marginTop: 7, flexWrap: "wrap" }}>
-            <StatusBadge status={localStudent.status} />
-            {localStudent.gender ? <Badge tone="neutral">{localStudent.gender}</Badge> : null}
-            {localStudent.blood_group ? <Badge tone="red"><Droplets size={11} /> {localStudent.blood_group}</Badge> : null}
-          </div>
-        </div>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".07em", fontWeight: 700 }}>Attendance</div>
-          <div style={{ fontSize: 23, fontWeight: 750 }}>{localStudent.attendance_rate == null ? "—" : percent(localStudent.attendance_rate, 0)}</div>
-        </div>
-      </div>
-
-      <div className="grid-2">
-        <div>
-          <h4 style={{ fontSize: 13, marginBottom: 10, color: "var(--text-2)" }}>Enrollment</h4>
-          <dl className="kv">
-            <dt>Student ID</dt><dd>{localStudent.student_id}</dd>
-            <dt>Class</dt><dd>{localStudent.class_name || "—"}</dd>
-            <dt>Section</dt><dd>{localStudent.section_name || "—"}</dd>
-            <dt>Roll number</dt><dd>{localStudent.roll_number ?? "—"}</dd>
-            <dt>Admitted</dt><dd>{formatDate(localStudent.admission_date)}</dd>
-            <dt>Date of birth</dt><dd>{formatDate(userDetail?.date_of_birth)}</dd>
-          </dl>
-        </div>
-        <div>
-          <h4 style={{ fontSize: 13, marginBottom: 10, color: "var(--text-2)" }}>Contact</h4>
-          <dl className="kv">
-            <dt>Email</dt><dd>{localStudent.user?.email || "—"}</dd>
-            <dt>Phone</dt><dd>{userDetail?.phone_number || "—"}</dd>
-            <dt>City</dt><dd>{userDetail?.city || "—"}</dd>
-            <dt>Country</dt><dd>{userDetail?.country || "—"}</dd>
-          </dl>
-        </div>
-      </div>
-
-      <div className="divider" />
-      <h4 style={{ fontSize: 13, marginBottom: 10, color: "var(--text-2)" }}>Guardians</h4>
-      {localStudent.guardians?.length ? (
-        <div style={{ display: "grid", gap: 8 }}>
-          {localStudent.guardians.map((guardian) => (
-            <div key={guardian.uuid} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 10 }}>
-              <Avatar name={guardian.full_name} size="sm" />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>
-                  {guardian.full_name} {guardian.is_primary ? <Badge tone="indigo">Primary</Badge> : null}
-                </div>
-                <div className="cell-sub">{guardian.relation} · {guardian.email}{guardian.phone_number ? ` · ${guardian.phone_number}` : ""}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p style={{ fontSize: 12.5, color: "var(--muted)" }}>No guardian linked yet.</p>
-      )}
-
-      {canManage ? (
-        <div style={{ marginTop: 12, padding: 12, border: "1px dashed var(--border-strong)", borderRadius: 10, background: "var(--surface-2)" }}>
-          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Link an existing parent account</div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
-            <div style={{ flex: "1 1 180px" }}>
-              <select className="select" value={guardianForm.user} onChange={(event) => setGuardianForm((current) => ({ ...current, user: event.target.value }))}>
-                <option value="">Select parent account…</option>
-                {parents.map((parent) => (
-                  <option key={parent.uuid} value={parent.uuid}>{parent.full_name} ({parent.email})</option>
-                ))}
-              </select>
-            </div>
-            <div style={{ width: 130 }}>
-              <select className="select" value={guardianForm.relation} onChange={(event) => setGuardianForm((current) => ({ ...current, relation: event.target.value }))}>
-                {RELATIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-              </select>
-            </div>
-            <Checkbox
-              checked={guardianForm.is_primary}
-              onChange={(value) => setGuardianForm((current) => ({ ...current, is_primary: value }))}
-              label="Primary"
-            />
-            <button type="button" className="btn btn-primary btn-sm" onClick={addGuardian} disabled={!guardianForm.user || guardianBusy}>
-              {guardianBusy ? <Spinner size={14} light /> : <Plus size={14} />} Link
-            </button>
-          </div>
-          <p className="help" style={{ marginTop: 7 }}>
-            Parents must already have an account with the Parent role. Create one under User accounts first.
-          </p>
-        </div>
-      ) : null}
-    </Modal>
-  );
-}
-
-function useAllParents(setParents) {
-  api
-    .get("/accounts/users/", { role: "Parent", page_size: 100 })
-    .then((data) => setParents(data.results || []))
-    .catch(() => {});
-}
 
 /* ------------------------------------------------------------------ form */
-function StudentFormModal({ open, onClose, student, sections, onSaved }) {
+export function StudentFormModal({ open, onClose, student, sections, onSaved }) {
   const toast = useToast();
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState(null);

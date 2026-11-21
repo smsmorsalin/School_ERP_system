@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { Children, cloneElement, isValidElement, useEffect, useId } from "react";
 import { createPortal } from "react-dom";
+import { Link } from "react-router-dom";
 import {
   AlertCircle,
   Check,
@@ -106,6 +107,7 @@ export function Spinner({ light = false, size = 22 }) {
     <span
       className={`spinner ${light ? "light" : ""}`}
       style={{ width: size, height: size }}
+      role="status"
       aria-label="Loading"
     />
   );
@@ -127,7 +129,7 @@ export function EmptyState({ icon, title = "Nothing here yet", description, acti
       <div className="empty-icon">
         <Icon size={24} />
       </div>
-      <h4>{title}</h4>
+      <h3>{title}</h3>
       {description ? <p>{description}</p> : null}
       {action}
     </div>
@@ -143,6 +145,29 @@ export function PageHeader({ title, subtitle, actions }) {
       </div>
       {actions ? <div className="page-actions">{actions}</div> : null}
     </div>
+  );
+}
+
+/**
+ * Detail-page breadcrumb trail. Items are `{ label, to? }`; the last item is
+ * rendered as the current page. Keeps entity pages oriented inside their list.
+ */
+export function Breadcrumbs({ items = [] }) {
+  if (!items.length) return null;
+  return (
+    <nav className="breadcrumbs" aria-label="Breadcrumb">
+      <ol>
+        {items.map((item, index) => {
+          const last = index === items.length - 1;
+          return (
+            <li key={`${item.label}-${index}`}>
+              {item.to && !last ? <Link to={item.to}>{item.label}</Link> : <span aria-current={last ? "page" : undefined}>{item.label}</span>}
+              {last ? null : <ChevronRight size={12} aria-hidden="true" />}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
   );
 }
 
@@ -186,16 +211,38 @@ export function StatCard({ icon: Icon, label, value, hint, tone = "indigo" }) {
   );
 }
 
+/**
+ * Associate every form control inside a Field with the field's label text.
+ * Nested controls (for example an input inside an `.input-wrap`) are reached
+ * too, and controls that already carry their own accessible name are left
+ * untouched.
+ */
+function linkControls(node, labelId) {
+  return Children.map(node, (child) => {
+    if (!isValidElement(child)) return child;
+    if (typeof child.type === "string" && ["input", "select", "textarea"].includes(child.type)) {
+      if (child.props["aria-label"] || child.props["aria-labelledby"]) return child;
+      return cloneElement(child, { "aria-labelledby": labelId });
+    }
+    if (child.props && child.props.children) {
+      return cloneElement(child, {}, linkControls(child.props.children, labelId));
+    }
+    return child;
+  });
+}
+
 export function Field({ label, required, hint, error, children, className = "" }) {
+  const autoId = useId();
+  const labelId = `field-${autoId}`;
   return (
     <div className={`field ${className}`}>
       {label ? (
-        <label>
+        <label id={labelId}>
           {label}
-          {required ? <span className="req">*</span> : null}
+          {required ? <span className="req" aria-hidden="true">*</span> : null}
         </label>
       ) : null}
-      {children}
+      {label ? linkControls(children, labelId) : children}
       {error ? <div className="error-text">{error}</div> : null}
       {hint && !error ? <div className="help">{hint}</div> : null}
     </div>
@@ -473,7 +520,7 @@ export function Checkbox({ checked, onChange, label, disabled }) {
           height: 18,
           borderRadius: 5,
           border: `1.5px solid ${checked ? "var(--primary)" : "var(--border-strong)"}`,
-          background: checked ? "var(--primary)" : "#fff",
+          background: checked ? "var(--primary)" : "var(--surface)",
           display: "grid",
           placeItems: "center",
           color: "#fff",

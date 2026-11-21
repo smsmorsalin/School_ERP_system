@@ -29,6 +29,7 @@ backend/.env
 # Node/frontend
 node_modules/
 dist/
+dist.old/
 build/
 .next/
 coverage/

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   BookOpen,
   DoorOpen,
@@ -35,12 +35,14 @@ import {
 } from "../components/ui";
 
 export default function Classes() {
-  usePageTitle("Classes");
-  const { isAdmin, hasRole } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [tab, setTab] = useState(searchParams.get("tab") || "classes");
+  const { isAdmin } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const tab = location.pathname === "/sections" ? "sections" : "classes";
+  usePageTitle(tab === "sections" ? "Sections" : "Classes");
   const [classFilter, setClassFilter] = useState(searchParams.get("class") || "");
-  const { classes, years, loading: refsLoading } = useReferenceData({ classes: true, years: true });
+  const { classes, years } = useReferenceData({ classes: true, years: true });
   const sectionsList = useList("/academics/sections/", {}, { pageSize: 50 });
   const classesData = useAll("/academics/classes/", { ordering: "level" });
   const canManage = isAdmin;
@@ -50,23 +52,16 @@ export default function Classes() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classFilter]);
 
-  useEffect(() => {
-    if (searchParams.get("class")) setClassFilter(searchParams.get("class"));
-    if (searchParams.get("tab")) setTab(searchParams.get("tab"));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const changeTab = (value) => {
-    setTab(value);
-    searchParams.set("tab", value);
-    setSearchParams(searchParams, { replace: true });
+    if (value === "sections") navigate(`/sections${classFilter ? `?class=${classFilter}` : ""}`);
+    else navigate("/classes");
   };
 
   return (
     <>
       <PageHeader
-        title="Classes & sections"
-        subtitle="Organise students into classes and teaching groups"
+        title={tab === "sections" ? "Sections" : "Classes"}
+        subtitle={tab === "sections" ? "Teaching groups, class teachers and rooms" : "Grade levels that organise the school"}
         actions={
           canManage ? (
             tab === "classes" ? (
@@ -97,7 +92,7 @@ export default function Classes() {
             onChanged={classesData.reload}
             onOpenSections={(uuid) => {
               setClassFilter(uuid);
-              changeTab("sections");
+              navigate(`/sections?class=${uuid}`);
             }}
           />
         ) : (
@@ -106,7 +101,7 @@ export default function Classes() {
       ) : (
         <>
           <div className="filters" style={{ marginBottom: 14 }}>
-            <select className="select" value={classFilter} onChange={(event) => setClassFilter(event.target.value)}>
+            <select className="select" aria-label="Filter by class" value={classFilter} onChange={(event) => setClassFilter(event.target.value)}>
               <option value="">All classes</option>
               {classes.map((item) => <option key={item.uuid} value={item.uuid}>{item.name}</option>)}
             </select>

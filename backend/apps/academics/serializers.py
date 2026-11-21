@@ -66,15 +66,20 @@ class SchoolClassSerializer(serializers.ModelSerializer):
         read_only_fields = ["uuid", "created_at", "updated_at"]
 
     def get_sections_count(self, obj):
-        return getattr(obj, "sections_count", None) or obj.sections.filter(
-            is_active=True
-        ).count()
+        count = getattr(obj, "sections_count", None)
+        if count is not None:
+            return count
+        return obj.sections.filter(is_active=True).count()
 
     def get_students_count(self, obj):
-        return (
-            getattr(obj, "students_count", None)
-            or obj.students.filter(is_active=True, status="active").count()
-        )
+        count = getattr(obj, "students_count", None)
+        if count is not None:
+            return count
+        return StudentProfile.objects.filter(
+            current_section__school_class=obj,
+            is_active=True,
+            status="active",
+        ).count()
 
 
 class SectionSerializer(serializers.ModelSerializer):

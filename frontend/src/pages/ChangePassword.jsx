@@ -61,13 +61,14 @@ export default function ChangePassword() {
   };
 
   return (
-    <div
+    <main
       style={{
         minHeight: "100vh",
         display: "grid",
         placeItems: "center",
         padding: "40px 18px",
-        background: "linear-gradient(160deg, #f4f6fb 0%, #eef2ff 100%)",
+        background:
+          "radial-gradient(900px 480px at 50% -10%, var(--primary-light), transparent 62%), var(--bg)",
       }}
     >
       <div className="card" style={{ width: "100%", maxWidth: 480 }}>
@@ -190,6 +191,6 @@ export default function ChangePassword() {
           </form>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

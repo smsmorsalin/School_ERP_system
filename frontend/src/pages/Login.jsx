@@ -67,7 +67,7 @@ export default function Login() {
   };
 
   return (
-    <div className="auth-page">
+    <main className="auth-page">
       <section className="auth-visual">
         <div className="auth-brand">
           <div className="brand-mark">
@@ -206,6 +206,6 @@ export default function Login() {
           </div>
         </div>
       </section>
-    </div>
+    </main>
   );
 }

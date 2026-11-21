@@ -280,7 +280,7 @@ function AdminDashboard({ data, stats, fees, attendance }) {
                 </thead>
                 <tbody>
                   {data.recent_admissions.map((student) => (
-                    <tr key={student.uuid} style={{ cursor: "pointer" }} onClick={() => navigate(`/students?student=${student.uuid}`)}>
+                    <tr key={student.uuid} style={{ cursor: "pointer" }} onClick={() => navigate(`/students/${student.uuid}`)}>
                       <td>
                         <div className="cell-user">
                           <Avatar name={student.name} size="sm" />

@@ -87,7 +87,7 @@ export default function Payments() {
 
       <Card title="Payment history" subtitle={`${list.count} transaction(s)`} style={{ marginTop: 20 }} flush>
         <div className="filters" style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)" }}>
-          <select className="select" value={method} onChange={(event) => setMethod(event.target.value)}>
+          <select className="select" aria-label="Filter by payment method" value={method} onChange={(event) => setMethod(event.target.value)}>
             <option value="">All methods</option>
             {PAYMENT_METHODS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
           </select>

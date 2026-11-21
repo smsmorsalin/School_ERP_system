@@ -4,21 +4,27 @@ import {
   Activity,
   Banknote,
   Bell,
+  BookMarked,
   BookOpen,
   CalendarCheck,
   CalendarDays,
   ChevronDown,
-  ClipboardList,
   FileSpreadsheet,
   GraduationCap,
+  History,
+  Layers,
   LayoutDashboard,
+  Link2,
   LogOut,
   Megaphone,
   Menu,
+  Moon,
   Receipt,
   Search,
   Settings,
   ShieldCheck,
+  Sun,
+  Tags,
   UserCircle,
   Users,
   Wallet,
@@ -28,16 +34,20 @@ import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { api } from "../lib/api";
 import { useDebounced } from "../lib/hooks";
-import { usePageTitle } from "../lib/usePageTitle";
+import { setStoredTheme } from "../lib/theme";
 import { formatDate, relativeTime } from "../lib/format";
 import { Avatar, Badge } from "./ui";
 
 const all = (...roles) => roles;
 
+const EVERYONE = all("Admin", "Teacher", "Accountant", "Student", "Parent");
+const ACADEMICS = all("Admin", "Teacher", "Student", "Parent");
+const FINANCE = all("Admin", "Accountant");
+
 const NAV_GROUPS = [
   {
     title: "Overview",
-    items: [{ to: "/", label: "Dashboard", icon: LayoutDashboard, roles: all("Admin", "Teacher", "Accountant", "Student", "Parent") }],
+    items: [{ to: "/", label: "Dashboard", icon: LayoutDashboard, roles: EVERYONE }],
   },
   {
     title: "People",
@@ -45,38 +55,53 @@ const NAV_GROUPS = [
       { to: "/students", label: "Students", icon: GraduationCap, roles: all("Admin", "Teacher", "Accountant") },
       { to: "/students", label: "My children", icon: GraduationCap, roles: all("Parent") },
       { to: "/teachers", label: "Teachers", icon: Users, roles: all("Admin") },
-      { to: "/users", label: "User accounts", icon: UserCircle, roles: all("Admin") },
-      { to: "/roles", label: "Roles & access", icon: ShieldCheck, roles: all("Admin") },
-      { to: "/audit", label: "Audit log", icon: Activity, roles: all("Admin") },
     ],
   },
   {
     title: "Academics",
     items: [
-      { to: "/classes", label: "Classes & sections", icon: BookOpen, roles: all("Admin", "Teacher", "Accountant", "Student", "Parent") },
-      { to: "/subjects", label: "Subjects", icon: ClipboardList, roles: all("Admin", "Teacher", "Student", "Parent") },
-      { to: "/timetable", label: "Timetable", icon: CalendarDays, roles: all("Admin", "Teacher", "Accountant", "Student", "Parent") },
+      { to: "/classes", label: "Classes", icon: BookOpen, roles: EVERYONE },
+      { to: "/sections", label: "Sections", icon: Layers, roles: EVERYONE },
+      { to: "/subjects", label: "Subject catalogue", icon: BookMarked, roles: ACADEMICS, end: true },
+      { to: "/subjects/assignments", label: "Class subjects", icon: Link2, roles: ACADEMICS },
+      { to: "/timetable", label: "Timetable", icon: CalendarDays, roles: EVERYONE },
     ],
   },
   {
-    title: "Daily operations",
+    title: "Attendance",
     items: [
-      { to: "/attendance", label: "Attendance", icon: CalendarCheck, roles: all("Admin", "Teacher", "Student", "Parent") },
-      { to: "/exams", label: "Examinations", icon: FileSpreadsheet, roles: all("Admin", "Teacher") },
-      { to: "/results", label: "Results", icon: GraduationCap, roles: all("Admin", "Teacher", "Student", "Parent") },
+      { to: "/attendance", label: "Mark attendance", icon: CalendarCheck, roles: all("Admin", "Teacher"), end: true },
+      { to: "/attendance/records", label: "Attendance records", icon: History, roles: all("Admin", "Teacher") },
+      { to: "/attendance", label: "My attendance", icon: CalendarCheck, roles: all("Student", "Parent"), end: true },
+    ],
+  },
+  {
+    title: "Examinations",
+    items: [
+      { to: "/exams", label: "Exams", icon: FileSpreadsheet, roles: all("Admin", "Teacher") },
+      { to: "/results", label: "Results", icon: GraduationCap, roles: ACADEMICS },
     ],
   },
   {
     title: "Finance",
     items: [
       { to: "/invoices", label: "Invoices", icon: Receipt, roles: all("Admin", "Accountant", "Student", "Parent") },
-      { to: "/fees", label: "Fee setup", icon: Wallet, roles: all("Admin", "Accountant") },
-      { to: "/payments", label: "Payments", icon: Banknote, roles: all("Admin", "Accountant") },
+      { to: "/payments", label: "Payments", icon: Banknote, roles: FINANCE },
+      { to: "/fees", label: "Fee structures", icon: Wallet, roles: FINANCE, end: true },
+      { to: "/fees/categories", label: "Fee categories", icon: Tags, roles: FINANCE },
     ],
   },
   {
     title: "Communication",
-    items: [{ to: "/announcements", label: "Announcements", icon: Megaphone, roles: all("Admin", "Teacher", "Accountant", "Student", "Parent") }],
+    items: [{ to: "/announcements", label: "Announcements", icon: Megaphone, roles: EVERYONE }],
+  },
+  {
+    title: "Administration",
+    items: [
+      { to: "/users", label: "User accounts", icon: UserCircle, roles: all("Admin") },
+      { to: "/roles", label: "Roles & access", icon: ShieldCheck, roles: all("Admin") },
+      { to: "/audit", label: "Audit log", icon: Activity, roles: all("Admin") },
+    ],
   },
 ];
 
@@ -84,13 +109,17 @@ const TITLES = {
   "/": ["Dashboard", "A live overview of your school"],
   "/students": ["Students", "Student records and admissions"],
   "/teachers": ["Teachers", "Teaching staff directory"],
-  "/classes": ["Classes & sections", "Class structure and rosters"],
-  "/subjects": ["Subjects", "Curriculum and subject assignments"],
+  "/classes": ["Classes", "Grade levels that organise the school"],
+  "/sections": ["Sections", "Teaching groups, class teachers and rooms"],
+  "/subjects": ["Subjects", "The curriculum catalogue used across the school"],
+  "/subjects/assignments": ["Class subjects", "Subject and teacher assignments per section"],
   "/timetable": ["Timetable", "Weekly class schedule"],
-  "/attendance": ["Attendance", "Daily attendance and trends"],
-  "/exams": ["Examinations", "Exam setup, mark entry and publishing"],
+  "/attendance": ["Attendance", "Daily register and attendance history"],
+  "/attendance/records": ["Attendance records", "History, trends and exports"],
+  "/exams": ["Examinations", "Exam setup, papers, marks and publishing"],
   "/results": ["Results", "Marks, grades and report cards"],
-  "/fees": ["Fee setup", "Fee categories and class fees"],
+  "/fees": ["Fee structures", "What each class is billed, and when it is due"],
+  "/fees/categories": ["Fee categories", "Billing items available when building class fees"],
   "/invoices": ["Invoices", "Billing and outstanding balances"],
   "/payments": ["Payments", "Collections and receipts"],
   "/checkout": ["Secure checkout", "Complete your fee payment safely"],
@@ -101,6 +130,19 @@ const TITLES = {
   "/profile": ["My profile", "Personal details and security"],
   "/change-password": ["Change password", "Keep your account secure"],
 };
+
+/** Resolve the topbar title for detail and workspace routes. */
+function titleFor(pathname) {
+  if (TITLES[pathname]) return TITLES[pathname];
+  if (/^\/exams\/[^/]+\/papers\//.test(pathname)) return ["Mark entry", "Record and save marks for one paper"];
+  if (/^\/exams\/[^/]+\/analytics$/.test(pathname)) return ["Exam analytics", "Grade distribution and averages"];
+  if (/^\/exams\/[^/]+\/?$/.test(pathname)) return ["Exam workspace", "Papers, marks and result publishing"];
+  if (/^\/students\/[^/]+\/?$/.test(pathname)) return ["Student profile", "Enrollment, guardians and related records"];
+  if (/^\/users\/[^/]+\/?$/.test(pathname)) return ["User account", "Profile, access and sign-in activity"];
+  if (/^\/invoices\/[^/]+\/?$/.test(pathname)) return ["Invoice detail", "Statement, payments and balance"];
+  if (pathname.startsWith("/checkout/")) return TITLES["/checkout"];
+  return ["School ERP", "Management console"];
+}
 
 function Sidebar({ open, onClose }) {
   const { user, logout, isAdmin, hasRole } = useAuth();
@@ -148,7 +190,7 @@ function Sidebar({ open, onClose }) {
                   <NavLink
                     key={`${group.title}-${item.to}-${item.label}`}
                     to={item.to}
-                    end={item.to === "/"}
+                    end={item.end || item.to === "/"}
                     className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
                     onClick={onClose}
                   >
@@ -249,7 +291,7 @@ function GlobalSearch() {
                   onClick={() => {
                     setOpen(false);
                     setQuery("");
-                    navigate(`/students?student=${student.uuid}`);
+                    navigate(`/students/${student.uuid}`);
                   }}
                 >
                   <Avatar name={student.name} size="sm" />
@@ -387,7 +429,7 @@ function Notifications() {
                     textAlign: "left",
                     border: 0,
                     borderBottom: "1px solid var(--border)",
-                    background: item.is_read ? "#fff" : "#f8faff",
+                    background: item.is_read ? "var(--surface)" : "var(--primary-light)",
                     padding: "10px 14px",
                     cursor: "pointer",
                   }}
@@ -455,7 +497,7 @@ function UserMenu() {
           alignItems: "center",
           gap: 9,
           border: "1px solid var(--border)",
-          background: "#fff",
+          background: "var(--surface)",
           borderRadius: 11,
           padding: "4px 8px 4px 4px",
           cursor: "pointer",
@@ -517,14 +559,35 @@ function UserMenu() {
   );
 }
 
+function ThemeToggle() {
+  const [theme, setTheme] = useState(() =>
+    document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light"
+  );
+
+  const toggle = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    setStoredTheme(next);
+    setTheme(next);
+  };
+
+  const isDark = theme === "dark";
+  return (
+    <button
+      type="button"
+      className="topbar-icon"
+      onClick={toggle}
+      aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
+      title={isDark ? "Light mode" : "Dark mode"}
+    >
+      {isDark ? <Sun size={18} /> : <Moon size={18} />}
+    </button>
+  );
+}
+
 export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
-  const [title, subtitle] = TITLES[location.pathname] ||
-    (location.pathname.startsWith("/checkout/")
-      ? TITLES["/checkout"]
-      : ["School ERP", "Management console"]);
-  usePageTitle(title);
+  const [title, subtitle] = titleFor(location.pathname);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -550,6 +613,7 @@ export default function Layout() {
           </div>
           <div className="topbar-spacer" />
           <GlobalSearch />
+          <ThemeToggle />
           <Notifications />
           <UserMenu />
         </header>

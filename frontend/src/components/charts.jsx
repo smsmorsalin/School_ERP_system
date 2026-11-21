@@ -65,7 +65,7 @@ export function AreaChart({ data = [], color = "#4f46e5", height = 250, formatVa
       <polyline points={line} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
       {points.map((point, index) => (
         <g key={`${point.label}-${index}`}>
-          <circle cx={point.x} cy={point.y} r={index === points.length - 1 ? 4 : 2.6} fill="#fff" stroke={color} strokeWidth="2">
+          <circle cx={point.x} cy={point.y} r={index === points.length - 1 ? 4 : 2.6} fill="var(--surface)" stroke={color} strokeWidth="2">
             <title>{`${point.label}: ${formatValue ? formatValue(point.value) : point.value}`}</title>
           </circle>
           {index % labelStep === 0 || index === points.length - 1 ? (

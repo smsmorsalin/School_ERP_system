@@ -8,11 +8,11 @@
   --sidebar-text: #cbd5e1;
   --sidebar-muted: #7c8aa5;
   --accent: #06b6d4;
-  --success: #10b981;
+  --success: #047857;
   --success-bg: #ecfdf5;
   --warning: #f59e0b;
   --warning-bg: #fffbeb;
-  --danger: #ef4444;
+  --danger: #dc2626;
   --danger-bg: #fef2f2;
   --info: #3b82f6;
   --info-bg: #eff6ff;
@@ -23,18 +23,20 @@
   --border-strong: #d5dbe8;
   --text: #0f172a;
   --text-2: #475569;
-  --muted: #8391a8;
+  --muted: #667085;
   --radius-sm: 8px;
   --radius: 12px;
   --radius-lg: 18px;
-  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
-  --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.06);
-  --shadow: 0 8px 30px rgba(15, 23, 42, 0.08);
-  --shadow-lg: 0 24px 60px rgba(15, 23, 42, 0.18);
+  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow: 0 12px 32px -8px rgba(16, 24, 40, 0.12), 0 4px 12px -4px rgba(16, 24, 40, 0.08);
+  --shadow-lg: 0 32px 64px -16px rgba(16, 24, 40, 0.24), 0 8px 24px -8px rgba(16, 24, 40, 0.12);
+  --ring: 0 0 0 4px rgba(79, 70, 229, 0.16);
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
   --sidebar-width: 264px;
   --topbar-height: 68px;
-  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
-    Arial, "Noto Sans", sans-serif;
+  --font: "Inter", "Inter var", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
 }
 
 * {
@@ -55,7 +57,9 @@ body {
   font-size: 14.5px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
 }
 
 a {
@@ -152,7 +156,7 @@ p { margin: 0; }
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #64748b;
+  color: #93a0bd;
 }
 
 .nav-link {
@@ -370,6 +374,53 @@ p { margin: 0; }
 .page-head p { color: var(--text-2); font-size: 13.5px; margin-top: 3px; }
 .page-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
+/* Breadcrumb trail on detail pages. */
+.breadcrumbs { margin-bottom: 10px; }
+.breadcrumbs ol {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.breadcrumbs li { display: inline-flex; align-items: center; gap: 4px; }
+.breadcrumbs a { color: var(--text-2); text-decoration: none; }
+.breadcrumbs a:hover { color: var(--primary); text-decoration: underline; }
+.breadcrumbs [aria-current="page"] { color: var(--text-2); font-weight: 600; }
+
+/* Entity detail page: summary strip + stacked content sections. */
+.detail-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+  margin-bottom: 20px;
+}
+.detail-hero-main { flex: 1; min-width: 200px; }
+.detail-hero-main h2 { font-size: 21px; letter-spacing: -0.02em; }
+.detail-hero-main p { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+.detail-hero-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.detail-block { margin-bottom: 20px; }
+.detail-block:last-child { margin-bottom: 0; }
+.detail-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
 /* ---------------------------------------------------------------- Buttons */
 .btn {
   display: inline-flex;
@@ -408,9 +459,17 @@ p { margin: 0; }
 .btn-ghost:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
 
 .btn-danger { background: var(--danger); color: #fff; }
-.btn-danger:hover:not(:disabled) { background: #dc2626; }
+.btn-danger:hover:not(:disabled) { background: #b91c1c; }
 
 .btn-success { background: var(--success); color: #fff; }
+.btn-success:hover:not(:disabled) { background: #065f46; }
+
+/* Dark theme keeps bright semantic colors for text; buttons use deeper
+   fills so white labels still clear WCAG AA. */
+[data-theme="dark"] .btn-danger { background: #b91c1c; }
+[data-theme="dark"] .btn-danger:hover:not(:disabled) { background: #991b1b; }
+[data-theme="dark"] .btn-success { background: #047857; }
+[data-theme="dark"] .btn-success:hover:not(:disabled) { background: #065f46; }
 .btn-success:hover:not(:disabled) { background: #059669; }
 
 .btn-sm { height: 33px; padding: 0 11px; font-size: 12.5px; border-radius: 8px; }
@@ -683,10 +742,13 @@ table.table {
   overflow-x: auto;
 }
 .tab {
+  display: inline-flex;
+  align-items: center;
   padding: 10px 15px;
   font-size: 13.5px;
   font-weight: 600;
   color: var(--muted);
+  text-decoration: none;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
   white-space: nowrap;
@@ -822,7 +884,7 @@ table.table {
   margin: 0 auto 12px;
   color: #94a3b8;
 }
-.empty h4 { font-size: 14px; color: var(--text-2); margin-bottom: 3px; }
+.empty h3 { font-size: 14px; color: var(--text-2); margin-bottom: 3px; }
 .empty p { font-size: 12.5px; }
 .empty .btn { margin-top: 14px; }
 
@@ -1206,7 +1268,7 @@ table.table {
 }
 .announce-card + .announce-card { margin-top: 10px; }
 .announce-card.unread { border-left: 3px solid var(--primary); background: #fbfcff; }
-.announce-card h4 { font-size: 14.5px; display: flex; align-items: center; gap: 8px; }
+.announce-card h3 { font-size: 14.5px; display: flex; align-items: center; gap: 8px; margin: 0; }
 .announce-card .body { color: var(--text-2); font-size: 13px; margin-top: 6px; white-space: pre-line; }
 .announce-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--muted); font-size: 11.5px; margin-top: 9px; }
 
@@ -1589,7 +1651,7 @@ table.table {
   --border-strong: #33415f;
   --text: #e6ecf8;
   --text-2: #a5b2cc;
-  --muted: #6d7c9c;
+  --muted: #8593b3;
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.45);
   --shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
@@ -1631,12 +1693,17 @@ table.table {
 [data-theme="dark"] table td { border-color: var(--border); }
 [data-theme="dark"] ::selection { background: var(--primary-soft); color: var(--text); }
 
-/* Badges, notices and status chips tuned for dark backgrounds. */
+/* Badges, notices and status chips tuned for dark backgrounds.
+   Tinted surfaces are translucent, so the text colour must stay
+   light enough to clear WCAG AA (4.5:1) once the tint blends in. */
 [data-theme="dark"] .badge-neutral { background: var(--surface-2); color: var(--text-2); }
-[data-theme="dark"] .badge-amber { color: var(--warning); }
-[data-theme="dark"] .badge-red { color: var(--danger); }
-[data-theme="dark"] .badge-cyan { background: var(--primary-light); color: var(--accent); }
-[data-theme="dark"] .badge-violet { background: var(--primary-soft); color: var(--primary); }
+[data-theme="dark"] .badge-green { background: var(--success-bg); color: #6ee7b7; }
+[data-theme="dark"] .badge-indigo { background: var(--primary-light); color: #c7d2fe; }
+[data-theme="dark"] .badge-blue { background: var(--info-bg); color: #93c5fd; }
+[data-theme="dark"] .badge-amber { background: var(--warning-bg); color: #fcd34d; }
+[data-theme="dark"] .badge-red { background: var(--danger-bg); color: #fca5a5; }
+[data-theme="dark"] .badge-cyan { background: var(--primary-light); color: #67e8f9; }
+[data-theme="dark"] .badge-violet { background: var(--primary-soft); color: #ddd6fe; }
 [data-theme="dark"] .stat-icon.amber,
 [data-theme="dark"] .stat-icon.rose,
 [data-theme="dark"] .stat-icon.cyan { color: var(--text-2); }
@@ -1644,6 +1711,7 @@ table.table {
 [data-theme="dark"] .notice.info { border-color: var(--border); color: var(--info); }
 [data-theme="dark"] .notice.warning { border-color: var(--border); color: var(--warning); }
 [data-theme="dark"] .notice.danger { border-color: var(--border); color: var(--danger); }
+[data-theme="dark"] .form-error { border-color: var(--border); color: #fca5a5; }
 [data-theme="dark"] .status-chip.active.absent { border-color: var(--border); color: var(--danger); }
 [data-theme="dark"] .status-chip.active.late { border-color: var(--border); color: var(--warning); }
 [data-theme="dark"] .icon-btn.danger:hover { border-color: var(--border); }
@@ -1673,4 +1741,148 @@ table,
 .topbar,
 .sidebar {
   transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+
+/* ================================================================
+   Professional polish pass
+   Layered refinements: focus visibility, depth, micro-interaction
+   and control details. Everything reads from the theme tokens so
+   light and dark stay consistent.
+   ================================================================ */
+
+/* Keyboard-accessible focus ring, consistent across controls. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: var(--ring);
+}
+:where(a, button):focus-visible {
+  border-radius: 9px;
+}
+
+/* Gentle depth behind the app canvas (light mode). */
+:root:not([data-theme="dark"]) body {
+  background:
+    radial-gradient(1100px 560px at 100% -12%, rgba(99, 102, 241, 0.07), transparent 62%),
+    radial-gradient(900px 480px at -12% 112%, rgba(6, 182, 212, 0.05), transparent 60%),
+    var(--bg);
+}
+
+/* Headings wrap more gracefully. */
+h1, h2, h3 { text-wrap: balance; }
+.page-head h2 { letter-spacing: -0.028em; }
+
+/* Buttons — refined primary sheen and tactile press. */
+.btn {
+  transition: background 0.15s var(--ease), border-color 0.15s var(--ease),
+    box-shadow 0.18s var(--ease), color 0.15s var(--ease), transform 0.06s var(--ease);
+}
+:root:not([data-theme="dark"]) .btn-primary {
+  background: linear-gradient(180deg, #5b54ea 0%, var(--primary) 58%, var(--primary-dark) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 6px 16px -6px rgba(79, 70, 229, 0.5);
+}
+:root:not([data-theme="dark"]) .btn-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #635cf0 0%, #4c45e0 58%, #3f36c9 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26), 0 10px 22px -8px rgba(79, 70, 229, 0.58);
+}
+.btn-primary:active:not(:disabled) {
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+.btn-secondary { box-shadow: var(--shadow-xs); }
+.btn-secondary:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+.btn-danger { box-shadow: 0 6px 16px -8px rgba(239, 68, 68, 0.5); }
+
+/* Surfaces lift subtly on hover. */
+.card,
+.stat-card {
+  transition: box-shadow 0.2s var(--ease), border-color 0.2s var(--ease),
+    transform 0.2s var(--ease);
+}
+.stat-card:hover {
+  box-shadow: var(--shadow-sm);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+/* Tables — crisper headers and a calmer hover. */
+.table thead th {
+  color: var(--text-2);
+  border-bottom: 1px solid var(--border-strong);
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+}
+.table tbody tr { transition: background 0.12s var(--ease); }
+.table tbody tr:hover { background: #f7f8ff; }
+.table .num, .stat-body .value, .money { font-variant-numeric: tabular-nums; }
+
+/* Badges — hairline inner edge for definition. */
+.badge { box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.05); }
+
+/* Inputs — hover affordance before focus. */
+.input:hover:not(:focus):not(:disabled),
+.select:hover:not(:focus):not(:disabled),
+.textarea:hover:not(:focus):not(:disabled) {
+  border-color: var(--muted);
+}
+.input, .select, .textarea {
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease),
+    background 0.15s var(--ease);
+}
+
+/* Sidebar — accent rail on the active item and a quiet hover slide. */
+.nav-link { transition: background 0.16s var(--ease), color 0.16s var(--ease),
+  transform 0.12s var(--ease); }
+.nav-link:hover { transform: translateX(1px); }
+.nav-link.active::before {
+  content: "";
+  position: absolute;
+  left: -12px;
+  top: 22%;
+  bottom: 22%;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+/* Topbar and popovers. */
+.topbar { box-shadow: 0 1px 0 rgba(16, 24, 40, 0.03); }
+.search-pop, .toast { box-shadow: var(--shadow); }
+
+/* Modals — softer backdrop and cleaner entrance. */
+.modal-overlay { background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); }
+
+/* Empty states and demo chips. */
+.empty .empty-icon { box-shadow: var(--shadow-xs); }
+.demo-chip {
+  transition: border-color 0.15s var(--ease), color 0.15s var(--ease),
+    background 0.15s var(--ease);
+}
+.demo-chip:hover { background: var(--primary-light); }
+
+/* Slimmer scrollbars. */
+::-webkit-scrollbar { width: 9px; height: 9px; }
+
+/* Dark-mode counterparts for the polish layer. */
+[data-theme="dark"] .btn-danger { box-shadow: none; }
+[data-theme="dark"] .badge { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
+[data-theme="dark"] .table thead th {
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border-bottom-color: var(--border-strong);
+}
+[data-theme="dark"] .btn-primary { color: #0b1120; }
+[data-theme="dark"] .btn-primary:hover:not(:disabled) { color: #0b1120; }
+[data-theme="dark"] .demo-chip { background: var(--surface-2); border-color: var(--border); color: var(--text-2); }
+
+/* Honour reduced-motion preferences. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -99,7 +99,7 @@ export default function Audit() {
               placeholder="Search actor, action, target or IP…"
             />
           </div>
-          <select className="select" value={category} onChange={(event) => setCategory(event.target.value)}>
+          <select className="select" aria-label="Filter by category" value={category} onChange={(event) => setCategory(event.target.value)}>
             {CATEGORIES.map((item) => (
               <option key={item.value} value={item.value}>{item.label}</option>
             ))}

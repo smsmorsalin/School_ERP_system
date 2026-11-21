@@ -91,11 +91,11 @@ function StaffResults() {
       <Card flush>
         <div className="filters" style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)" }}>
           <SearchInput value={search} onChange={setSearch} placeholder="Search student…" />
-          <select className="select" value={exam} onChange={(event) => setExam(event.target.value)}>
+          <select className="select" aria-label="Filter by exam" value={exam} onChange={(event) => setExam(event.target.value)}>
             <option value="">All exams</option>
             {exams.map((item) => <option key={item.uuid} value={item.uuid}>{item.name}</option>)}
           </select>
-          <select className="select" value={section} onChange={(event) => setSection(event.target.value)}>
+          <select className="select" aria-label="Filter by section" value={section} onChange={(event) => setSection(event.target.value)}>
             <option value="">All sections</option>
             {sections.map((item) => <option key={item.uuid} value={item.uuid}>{item.display_name}</option>)}
           </select>
@@ -195,13 +195,13 @@ function FamilyResults() {
       <Card style={{ marginBottom: 20 }}>
         <div className="filters">
           {students.length > 1 ? (
-            <select className="select" value={student} onChange={(event) => change("student", event.target.value)}>
+            <select className="select" aria-label="Select student" value={student} onChange={(event) => change("student", event.target.value)}>
               {students.map((child) => <option key={child.uuid} value={child.uuid}>{child.user?.full_name} — {child.student_id}</option>)}
             </select>
           ) : students[0] ? (
             <Badge tone="indigo">{students[0].user?.full_name} · {students[0].student_id}</Badge>
           ) : null}
-          <select className="select" value={exam} onChange={(event) => change("exam", event.target.value)}>
+          <select className="select" aria-label="Select exam" value={exam} onChange={(event) => change("exam", event.target.value)}>
             <option value="">Select exam…</option>
             {exams.map((item) => <option key={item.uuid} value={item.uuid}>{item.name} · {formatDate(item.start_date)}</option>)}
           </select>

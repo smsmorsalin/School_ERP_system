@@ -20,6 +20,10 @@ PROJECT_ROOT = BASE_DIR.parent
 
 config = AutoConfig(search_path=BASE_DIR)
 
+# Strip non-boolean ambient DEBUG environment variables (e.g. DEBUG=release from other toolchains)
+if os.environ.get("DEBUG", "").strip().lower() not in ("1", "0", "true", "false", "yes", "no", "on", "off", ""):
+    del os.environ["DEBUG"]
+
 # Container deployments mount the built SPA and data volumes at custom paths,
 # so every filesystem location can be overridden with an environment variable.
 FRONTEND_DIST = Path(

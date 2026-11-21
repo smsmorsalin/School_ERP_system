@@ -61,7 +61,7 @@ backend/
 │   ├── communication/        # announcements + read receipts
 │   ├── dashboard/            # role-aware overview + global search + health
 │   └── audit/                # append-only AuditLog, signals, read-only API
-├── tests/                    # pytest suite (conftest + 9 modules, 110 tests)
+├── tests/                    # pytest suite (conftest + 12 modules, 112 tests)
 ├── manage.py
 └── requirements.txt
 ```
@@ -265,6 +265,18 @@ stores the new access token in memory and retries the original request. If the
 refresh fails it dispatches a `school-erp:session-expired` event, clears state
 and redirects to login. Nothing sensitive is stored in browser storage.
 
+**Design system & theming.** `src/styles.css` holds the design tokens
+(Inter-first font stack, layered shadows, `--ring`, `--ease`) and a layered
+"professional polish" pass (focus-visible rings, stat-card hover lift, table
+header gradient, badge hairline edge, sidebar active accent rail, modal blur,
+slim scrollbars, reduced-motion support). Every token has a dark counterpart
+under `[data-theme="dark"]`, with WCAG AA contrast fixed at the token level
+(`--muted` light `#667085`, dark `#8593b3`). A topbar Moon/Sun `ThemeToggle`
+(`Layout.jsx`) persists the choice to `localStorage` (`school-erp-theme`) and
+`frontend/public/theme-init.js` sets `data-theme` before first paint so there is
+no flash of the wrong theme. `robots.txt` (`Disallow: /`) is served from
+`frontend/public/` via WhiteNoise.
+
 ### 6.7 Audit logging
 
 `apps.audit` maintains a **tamper-evident, append-only** trail of changes to
@@ -336,8 +348,17 @@ frontend/src/
 │   ├── Layout.jsx        # sidebar + topbar shell
 │   ├── ui.jsx            # buttons, cards, inputs, tables, badges, modals
 │   └── charts.jsx        # custom SVG charts (line, donut, bars)
-└── pages/                # 23 route screens
+└── pages/                # 28 page modules (list, detail and workspace screens)
 ```
+
+- **Information architecture**: the sidebar is grouped by school function
+  (Overview, People, Academics, Attendance, Examinations, Finance,
+  Communication, Administration). Registers are list pages that link to
+  dedicated detail pages (`/students/:uuid`, `/users/:uuid`,
+  `/invoices/:uuid`) or workspaces (`/exams/:uuid`, `/exams/:uuid/analytics`,
+  `/exams/:uuid/papers/:paperUuid`). Modals are reserved for short create/edit
+  actions, while anything with history, related records or several actions gets
+  a page and a URL.
 
 - **Routing**: `react-router-dom` v6 with nested routes and role guards. A user
   hitting a route outside their role sees a friendly "no access" screen.
@@ -378,6 +399,84 @@ over the same API.
    webhook (live).
 5. Settlement creates exactly one immutable `Payment` and recalculates the
    invoice, so the existing receipts/summaries immediately reflect it.
+
+---
+
+## 11. Future architecture considerations
+
+The current architecture supports five roles (Admin, Teacher, Accountant,
+Student, Parent) and seven core apps. As the school grows, the following
+architectural extensions are anticipated:
+
+### 11.1 New user roles
+
+| Role | Suggested app | Responsibility |
+|------|--------------|---------------|
+| Librarian | `library` | Book catalog, issue/return, fines, overdue reports |
+| Transport Manager | `transport` | Routes, vehicles, transport fees, student transport assignment |
+| Hostel Warden | `hostel` | Room allocation, mess management, hostel fee tracking |
+| Store / Inventory Manager | `inventory` | Stock levels, procurement, asset register |
+| Examination Controller | `exams` (extended) | Exam calendar, paper moderation, result lockdown controls |
+| Nurse / Medical Staff | `medical` | Student health records, vaccination tracker, infirmary log |
+| Counselor | `counseling` | Counseling session records, student case notes |
+| Event Coordinator | `events` | School events, holiday calendar |
+
+Each new role would follow the existing RBAC pattern: a `Role` record, scoped
+querysets in the relevant viewsets, and sidebar entries in
+`frontend/src/components/Layout.jsx`.
+
+### 11.2 New apps / modules
+
+| Module | Domain | Notes |
+|--------|--------|-------|
+| `library` | Library management | Books, members, loans, fines |
+| `transport` | Transport management | Routes, vehicles, drivers, transport fees |
+| `hostel` | Hostel management | Rooms, wardens, mess, hostel fees |
+| `inventory` | Store / asset management | Stock, procurement, assets |
+| `medical` | Infirmary / health | Student health records, vaccinations |
+| `counseling` | Student counseling | Session records, case notes |
+| `events` | Events & calendar | School events, holidays, academic calendar |
+| `expense` | Expense tracking | Non-fee expenses, vendor payments |
+| `payroll` | Staff salary | Salary structures, payslips, disbursement |
+| `assignment` | Assignments | Creation, submission, grading |
+| `lesson_plan` | Lesson planning | Daily/weekly teaching plans |
+| `leave` | Leave management | Staff/student leave applications and approvals |
+| `certificate` | Certificates | PDF generation for report cards, attendance, transfer |
+| `communication_extended` | Messaging | Teacher-parent chat, announcements with attachments |
+| `alumni` | Alumni management | Alumni records, events, networking |
+
+### 11.3 Cross-cutting architectural changes
+
+| Change | Motivation |
+|--------|------------|
+| SMTP email backend (replace console) | Password resets, fee reminders, alerts need real delivery |
+| SMS provider integration | Parents with limited email access |
+| PDF generation service | Report cards, invoices, certificates, receipts |
+| File storage (S3/object storage) | Attachments beyond profile images |
+| Real-time messaging (WebSockets) | Chat, notifications |
+| PWA / mobile app | Offline access, mobile-first experience |
+| i18n / multi-language | Schools operating in multiple languages |
+| Two-factor authentication (TOTP/WebAuthn) | Admin/Accountant account security |
+| SSO / OAuth integration | Single sign-on for staff |
+| Multi-school / branch support | School chains and campuses |
+| Scheduled jobs (Celery / cron) | Automated reports, reminders, backups |
+| Data backup & restore UI | Self-service backup management |
+| Audit retention & archiving | Compliance for append-only audit log |
+
+### 11.4 Data model extensions anticipated
+
+- **Library:** `Book`, `BookCopy`, `Loan`, `Fine`, `Reservation`
+- **Transport:** `Route`, `Vehicle`, `Driver`, `TransportAssignment`, `TransportFee`
+- **Hostel:** `Hostel`, `Room`, `Bed`, `HostelAssignment`, `MessMenu`
+- **Inventory:** `Item`, `ItemCategory`, `StockMovement`, `Supplier`, `PurchaseOrder`
+- **Medical:** `HealthRecord`, `Vaccination`, `InfirmaryVisit`, `Allergy`
+- **Expense:** `ExpenseCategory`, `Expense`, `Vendor`, `Reimbursement`
+- **Payroll:** `SalaryStructure`, `Payslip`, `PayrollRun`
+- **Assignment:** `Assignment`, `Submission`, `SubmissionGrade`
+- **Leave:** `LeaveType`, `LeaveApplication`, `LeaveApproval`
+
+See [`FUTURE_IMPLEMENTATION.md`](FUTURE_IMPLEMENTATION.md) for the prioritised
+backlog (P0 go-live through P5 QA) and the pre-push checklist.
 
 ---
 

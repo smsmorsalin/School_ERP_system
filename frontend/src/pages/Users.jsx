@@ -1,16 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
-  Ban,
-  CheckCircle2,
   Clock,
   Copy,
   Download,
+  Eye,
   KeyRound,
-  Lock,
-  Pencil,
-  Search,
   ShieldCheck,
-  Unlock,
   UserPlus,
   Users as UsersIcon,
 } from "lucide-react";
@@ -26,7 +22,6 @@ import {
   Badge,
   Card,
   Checkbox,
-  ConfirmDialog,
   EmptyState,
   ErrorBanner,
   Field,
@@ -70,12 +65,7 @@ export default function Users() {
   const [statusFilter, setStatusFilter] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [passwordUser, setPasswordUser] = useState(null);
-  const [historyUser, setHistoryUser] = useState(null);
-  const [deleting, setDeleting] = useState(null);
-  const [deleteBusy, setDeleteBusy] = useState(false);
   const [credentials, setCredentials] = useState(null);
-  const [rowBusy, setRowBusy] = useState(null);
 
   const list = useList("/accounts/users/", { ordering: "-created_at" });
   const { data: roles } = useAll("/accounts/roles/", { ordering: "name" });
@@ -94,46 +84,6 @@ export default function Users() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debounced, roleFilter, statusFilter]);
-
-  const toggleActive = async (account) => {
-    setRowBusy(account.uuid);
-    try {
-      const response = await api.post(`/accounts/users/${account.uuid}/toggle-active/`, {});
-      toast.success(response?.detail || "Account status updated.");
-      list.reload();
-    } catch (error) {
-      toast.error(error.message);
-    } finally {
-      setRowBusy(null);
-    }
-  };
-
-  const unlock = async (account) => {
-    setRowBusy(account.uuid);
-    try {
-      const response = await api.post(`/accounts/users/${account.uuid}/unlock/`, {});
-      toast.success(response?.detail || "Account unlocked.");
-      list.reload();
-    } catch (error) {
-      toast.error(error.message);
-    } finally {
-      setRowBusy(null);
-    }
-  };
-
-  const remove = async () => {
-    setDeleteBusy(true);
-    try {
-      await api.delete(`/accounts/users/${deleting.uuid}/`);
-      toast.success("Account deactivated and detached from active roles.");
-      setDeleting(null);
-      list.reload();
-    } catch (error) {
-      toast.error(error.message);
-    } finally {
-      setDeleteBusy(false);
-    }
-  };
 
   const exportRows = () => {
     downloadCSV(
@@ -253,7 +203,6 @@ export default function Users() {
                 <tbody>
                   {list.rows.map((account) => {
                     const isSelf = account.uuid === currentUser?.uuid;
-                    const busy = rowBusy === account.uuid;
                     return (
                       <tr key={account.uuid}>
                         <td>
@@ -307,68 +256,9 @@ export default function Users() {
                         </td>
                         <td className="cell-sub">{formatDateTime(account.created_at)}</td>
                         <td className="actions">
-                          <button
-                            type="button"
-                            className="icon-btn"
-                            title="Edit account"
-                            onClick={() => {
-                              setEditing(account);
-                              setFormOpen(true);
-                            }}
-                          >
-                            <Pencil size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            className="icon-btn"
-                            title="Set a new password"
-                            onClick={() => setPasswordUser(account)}
-                          >
-                            <KeyRound size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            className="icon-btn"
-                            title="View sign-in history"
-                            onClick={() => setHistoryUser(account)}
-                          >
-                            <Clock size={15} />
-                          </button>
-                          {account.is_locked ? (
-                            <button
-                              type="button"
-                              className="icon-btn"
-                              title="Unlock account"
-                              onClick={() => unlock(account)}
-                              disabled={busy}
-                            >
-                              <Unlock size={15} />
-                            </button>
-                          ) : null}
-                          <button
-                            type="button"
-                            className="icon-btn"
-                            title={account.is_active ? "Deactivate account" : "Activate account"}
-                            onClick={() => toggleActive(account)}
-                            disabled={busy || isSelf}
-                          >
-                            {busy ? (
-                              <Spinner size={14} />
-                            ) : account.is_active ? (
-                              <Ban size={15} />
-                            ) : (
-                              <CheckCircle2 size={15} />
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            className="icon-btn danger"
-                            title="Delete account"
-                            onClick={() => setDeleting(account)}
-                            disabled={isSelf}
-                          >
-                            <Lock size={15} />
-                          </button>
+                          <Link className="btn btn-secondary btn-sm" to={`/users/${account.uuid}`}>
+                            <Eye size={14} /> View
+                          </Link>
                         </td>
                       </tr>
                     );
@@ -423,18 +313,6 @@ export default function Users() {
         }}
       />
 
-      <SetPasswordModal
-        account={passwordUser}
-        onClose={() => setPasswordUser(null)}
-        onSaved={() => {
-          setPasswordUser(null);
-          toast.success("Password reset. The user must change it at next sign-in.");
-          list.reload();
-        }}
-      />
-
-      <LoginHistoryModal account={historyUser} onClose={() => setHistoryUser(null)} />
-
       <Modal
         open={Boolean(credentials)}
         onClose={() => setCredentials(null)}
@@ -468,16 +346,6 @@ export default function Users() {
           <dd>{(credentials?.roles || []).join(", ") || "—"}</dd>
         </dl>
       </Modal>
-
-      <ConfirmDialog
-        open={Boolean(deleting)}
-        onClose={() => setDeleting(null)}
-        onConfirm={remove}
-        busy={deleteBusy}
-        title="Delete this account?"
-        message={`${deleting?.full_name || "This user"} will be deactivated and removed from all active roles. Their records stay intact for audit purposes.`}
-        confirmLabel="Delete account"
-      />
     </>
   );
 }
@@ -498,7 +366,7 @@ function generatePassword() {
   return chars.join("");
 }
 
-function UserFormModal({ open, onClose, account, roleOptions, currentUser, onSaved }) {
+export function UserFormModal({ open, onClose, account, roleOptions, currentUser, onSaved }) {
   const toast = useToast();
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState(null);
@@ -689,7 +557,7 @@ function UserFormModal({ open, onClose, account, roleOptions, currentUser, onSav
   );
 }
 
-function SetPasswordModal({ account, onClose, onSaved }) {
+export function SetPasswordModal({ account, onClose, onSaved }) {
   const toast = useToast();
   const [form, setForm] = useState({ new_password: "", new_password_confirm: "" });
   const [show, setShow] = useState(false);
@@ -796,81 +664,70 @@ function SetPasswordModal({ account, onClose, onSaved }) {
   );
 }
 
-function LoginHistoryModal({ account, onClose }) {
+/** Sign-in activity table, shared by the account detail page. */
+export function LoginHistoryTable({ accountUuid }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!account) return;
+    if (!accountUuid) return;
     setLoading(true);
     setError(null);
     api
-      .get(`/accounts/users/${account.uuid}/login-history/`)
+      .get(`/accounts/users/${accountUuid}/login-history/`)
       .then((data) => setEntries(Array.isArray(data) ? data : data.results || []))
       .catch((err) => setError(err))
       .finally(() => setLoading(false));
-  }, [account]);
+  }, [accountUuid]);
 
+  if (error) return <div style={{ padding: 16 }}><ErrorBanner error={error} onDismiss={() => setError(null)} /></div>;
+  if (loading) return <Loading label="Loading activity…" />;
+  if (!entries.length) {
+    return (
+      <EmptyState
+        icon={Clock}
+        title="No sign-in activity yet"
+        description="Successful and failed sign-in attempts will appear here."
+      />
+    );
+  }
   return (
-    <Modal
-      open={Boolean(account)}
-      onClose={onClose}
-      title="Sign-in history"
-      subtitle={account ? `${account.full_name} · ${account.email}` : ""}
-      footer={
-        <button type="button" className="btn btn-secondary" onClick={onClose}>
-          Close
-        </button>
-      }
-    >
-      <ErrorBanner error={error} onDismiss={() => setError(null)} />
-      {loading ? (
-        <Loading label="Loading activity…" />
-      ) : entries.length ? (
-        <div className="table-wrap">
-          <table className="table table-compact">
-            <thead>
-              <tr>
-                <th>Status</th>
-                <th>When</th>
-                <th>IP address</th>
-                <th>Device</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((entry) => (
-                <tr key={entry.uuid}>
-                  <td>
-                    <StatusBadge status={entry.status}>
-                      {entry.status === "success" ? "Success" : entry.status === "logout" ? "Signed out" : "Failed"}
-                    </StatusBadge>
-                    {entry.failure_reason ? (
-                      <div className="cell-sub">{entry.failure_reason}</div>
-                    ) : null}
-                  </td>
-                  <td>
-                    <div>{formatDateTime(entry.login_time)}</div>
-                    {entry.logout_time ? (
-                      <div className="cell-sub">Out: {formatDateTime(entry.logout_time)}</div>
-                    ) : null}
-                  </td>
-                  <td className="cell-sub">{entry.ip_address || "—"}</td>
-                  <td className="cell-sub" style={{ textTransform: "capitalize" }}>
-                    {entry.device_type || "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <EmptyState
-          icon={Clock}
-          title="No sign-in activity yet"
-          description="Successful and failed sign-in attempts will appear here."
-        />
-      )}
-    </Modal>
+    <div className="table-wrap">
+      <table className="table table-compact">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>When</th>
+            <th>IP address</th>
+            <th>Device</th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map((entry) => (
+            <tr key={entry.uuid}>
+              <td>
+                <StatusBadge status={entry.status}>
+                  {entry.status === "success" ? "Success" : entry.status === "logout" ? "Signed out" : "Failed"}
+                </StatusBadge>
+                {entry.failure_reason ? (
+                  <div className="cell-sub">{entry.failure_reason}</div>
+                ) : null}
+              </td>
+              <td>
+                <div>{formatDateTime(entry.login_time)}</div>
+                {entry.logout_time ? (
+                  <div className="cell-sub">Out: {formatDateTime(entry.logout_time)}</div>
+                ) : null}
+              </td>
+              <td className="cell-sub">{entry.ip_address || "—"}</td>
+              <td className="cell-sub" style={{ textTransform: "capitalize" }}>
+                {entry.device_type || "—"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

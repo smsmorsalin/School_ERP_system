@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   CalendarCheck,
   CheckCheck,
@@ -49,19 +49,24 @@ export default function Attendance() {
 /* ------------------------------------------------------------------ staff */
 function StaffAttendance({ canManage, isAdmin }) {
   const [searchParams] = useSearchParams();
-  const [tab, setTab] = useState(canManage ? "mark" : "records");
+  const location = useLocation();
+  const navigate = useNavigate();
+  const tab = !canManage || location.pathname.endsWith("/records") ? "records" : "mark";
   const defaultSection = searchParams.get("section") || "";
 
   return (
     <>
-      <PageHeader title="Attendance" subtitle="Mark daily attendance and review trends" />
+      <PageHeader
+        title={tab === "mark" ? "Mark attendance" : "Attendance records"}
+        subtitle={tab === "mark" ? "Take the daily register for a section" : "Review attendance history and spot patterns"}
+      />
       <Tabs
         tabs={[
           ...(canManage ? [{ value: "mark", label: "Mark attendance" }] : []),
           { value: "records", label: "Records & insights" },
         ]}
         value={tab}
-        onChange={setTab}
+        onChange={(value) => navigate(value === "records" ? "/attendance/records" : "/attendance")}
       />
       {tab === "mark" ? <MarkAttendance defaultSection={defaultSection} /> : <AttendanceRecords isAdmin={isAdmin} />}
     </>
@@ -157,11 +162,11 @@ function MarkAttendance({ defaultSection }) {
       subtitle={section ? sections.find((item) => item.uuid === section)?.display_name : "Select a section"}
       actions={
         <>
-          <select className="select" style={{ width: "auto", minWidth: 180 }} value={section} onChange={(event) => setSection(event.target.value)}>
+          <select className="select" aria-label="Select a section" style={{ width: "auto", minWidth: 180 }} value={section} onChange={(event) => setSection(event.target.value)}>
             <option value="">Select section…</option>
             {sections.map((item) => <option key={item.uuid} value={item.uuid}>{item.display_name}</option>)}
           </select>
-          <input className="input" type="date" style={{ width: 160 }} max={todayISO()} value={date} onChange={(event) => setDate(event.target.value)} />
+          <input className="input" aria-label="Register date" type="date" style={{ width: 160 }} max={todayISO()} value={date} onChange={(event) => setDate(event.target.value)} />
         </>
       }
       flush
@@ -319,11 +324,11 @@ function AttendanceRecords({ isAdmin }) {
       <Card title="Attendance records" subtitle={`${list.count} record(s)`} style={{ marginTop: 20 }} flush>
         <div className="filters" style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)" }}>
           <SearchInput value={search} onChange={setSearch} placeholder="Search student…" />
-          <select className="select" value={section} onChange={(event) => setSection(event.target.value)}>
+          <select className="select" aria-label="Filter by section" value={section} onChange={(event) => setSection(event.target.value)}>
             <option value="">All sections</option>
             {sections.map((item) => <option key={item.uuid} value={item.uuid}>{item.display_name}</option>)}
           </select>
-          <select className="select" value={status} onChange={(event) => setStatus(event.target.value)}>
+          <select className="select" aria-label="Filter by attendance status" value={status} onChange={(event) => setStatus(event.target.value)}>
             <option value="">All statuses</option>
             {STATUS_BUTTONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
           </select>
@@ -355,7 +360,7 @@ function AttendanceRecords({ isAdmin }) {
                       <td className="cell-sub">{record.marked_by_name || "—"}</td>
                       {isAdmin ? (
                         <td className="actions">
-                          <button type="button" className="icon-btn danger" onClick={() => setDeleting(record)}><Trash2 size={15} /></button>
+                          <button type="button" className="icon-btn danger" aria-label="Delete attendance record" onClick={() => setDeleting(record)}><Trash2 size={15} /></button>
                         </td>
                       ) : null}
                     </tr>
@@ -421,7 +426,7 @@ function MyAttendance() {
 
       <Card title="History" subtitle={`${list.count} record(s)`} style={{ marginTop: 20 }} flush>
         <div className="filters" style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)" }}>
-          <select className="select" value={status} onChange={(event) => setStatus(event.target.value)}>
+          <select className="select" aria-label="Filter by attendance status" value={status} onChange={(event) => setStatus(event.target.value)}>
             <option value="">All statuses</option>
             {STATUS_BUTTONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
           </select>

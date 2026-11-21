@@ -110,7 +110,7 @@ export default function Announcements() {
 
       <div className="filters" style={{ marginBottom: 16 }}>
         <SearchInput value={search} onChange={setSearch} placeholder="Search announcements…" />
-        <select className="select" value={audience} onChange={(event) => setAudience(event.target.value)}>
+        <select className="select" aria-label="Filter by audience" value={audience} onChange={(event) => setAudience(event.target.value)}>
           <option value="">All audiences</option>
           {AUDIENCES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
         </select>
@@ -125,12 +125,12 @@ export default function Announcements() {
                   <Megaphone size={17} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <h4>
+                  <h3>
                     {item.is_pinned ? <Pin size={14} style={{ color: "var(--warning)" }} /> : null}
                     {item.title}
                     {!item.is_read ? <Badge tone="indigo">New</Badge> : null}
                     {item.audience === "class" && item.class_name ? <Badge tone="neutral">{item.class_name}</Badge> : null}
-                  </h4>
+                  </h3>
                   <div className="body">{item.body}</div>
                   <div className="announce-meta">
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
