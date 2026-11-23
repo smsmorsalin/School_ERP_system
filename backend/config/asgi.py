@@ -1,17 +1,9 @@
-"""
-ASGI config for config project.
-
-It exposes the ASGI callable as a module-level variable named ``application``.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/6.0/howto/deployment/asgi/
-"""
+"""ASGI entry point. Defaults to production settings for safety."""
 
 import os
 
 from django.core.asgi import get_asgi_application
 
-# Later, when deploying, we'll switch them to: config.settings.production
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.development')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.production")
 
 application = get_asgi_application()

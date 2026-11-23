@@ -1,0 +1,30 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: school-erp
+
+resources:
+  - namespace.yaml
+  - serviceaccount.yaml
+  - configmap.yaml
+  - storage/media-pvc.yaml
+  - postgres/service.yaml
+  - postgres/statefulset.yaml
+  - redis/service.yaml
+  - redis/deployment.yaml
+  - backend/deployment.yaml
+  - backend/service.yaml
+  - backend/hpa.yaml
+  - backend/pdb.yaml
+  - media/configmap.yaml
+  - media/deployment.yaml
+  - media/service.yaml
+  - ingress.yaml
+  - networkpolicy.yaml
+
+# The migration Job is intentionally not listed: Jobs are immutable and
+# should be run explicitly before a rollout. See jobs/migrate.yaml.
+
+images:
+  - name: ghcr.io/smsmorsalin/school-erp
+    newTag: latest
