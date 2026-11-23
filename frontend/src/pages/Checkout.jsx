@@ -136,7 +136,7 @@ export default function Checkout() {
             title="Checkout not found"
             description="This payment session does not exist or is not available to your account."
             action={
-              <Link to="/invoices" className="btn btn-primary" style={{ textDecoration: "none" }}>
+              <Link to="/finance/invoices" className="btn btn-primary" style={{ textDecoration: "none" }}>
                 <ArrowLeft size={15} /> Back to invoices
               </Link>
             }
@@ -152,7 +152,7 @@ export default function Checkout() {
   return (
     <div className="checkout-shell">
       <div className="checkout-topbar">
-        <Link to="/invoices" className="btn btn-ghost btn-sm">
+        <Link to="/finance/invoices" className="btn btn-ghost btn-sm">
           <ArrowLeft size={15} /> Back to invoices
         </Link>
         <span className="secure-pill"><Lock size={13} /> Secure checkout</span>
@@ -296,7 +296,7 @@ export default function Checkout() {
         <div className="checkout-actions">
           {isSucceeded ? (
             <>
-              <button type="button" className="btn btn-primary" onClick={() => navigate("/invoices")}>
+              <button type="button" className="btn btn-primary" onClick={() => navigate("/finance/invoices")}>
                 Back to invoices
               </button>
               <button type="button" className="btn btn-secondary" onClick={() => load()}>
@@ -305,7 +305,7 @@ export default function Checkout() {
             </>
           ) : null}
           {!isPending && !isSucceeded ? (
-            <button type="button" className="btn btn-primary" onClick={() => navigate("/invoices")}>
+            <button type="button" className="btn btn-primary" onClick={() => navigate("/finance/invoices")}>
               Try again from invoices
             </button>
           ) : null}

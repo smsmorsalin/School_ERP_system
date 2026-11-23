@@ -87,7 +87,7 @@ export default function OnlinePaymentModal({ invoice, open, onClose }) {
         { headers: { "Idempotency-Key": idempotencyKey.current } }
       );
 
-      const target = intent.checkout_url || `/checkout/${intent.uuid}`;
+      const target = intent.checkout_url || `/finance/checkout/${intent.uuid}`;
       if (intent.sandbox || target.includes("/checkout/")) {
         navigate(new URL(target, window.location.origin).pathname);
         onClose();

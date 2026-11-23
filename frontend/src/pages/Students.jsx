@@ -119,10 +119,9 @@ function StaffStudentsView() {
 
   useEffect(() => {
     if (searchParams.get("new") === "1" && isAdmin) {
-      setEditing(null);
-      setFormOpen(true);
       searchParams.delete("new");
       setSearchParams(searchParams, { replace: true });
+      navigate("/students/new");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -175,10 +174,7 @@ function StaffStudentsView() {
               <button
                 type="button"
                 className="btn btn-primary"
-                onClick={() => {
-                  setEditing(null);
-                  setFormOpen(true);
-                }}
+                onClick={() => navigate("/students/new")}
               >
                 <UserPlus size={16} /> Admit student
               </button>
@@ -309,7 +305,7 @@ function StaffStudentsView() {
             description={search || status || section ? "Try adjusting your filters." : "Admit your first student to get started."}
             action={
               isAdmin ? (
-                <button type="button" className="btn btn-primary" onClick={() => { setEditing(null); setFormOpen(true); }}>
+                <button type="button" className="btn btn-primary" onClick={() => navigate("/students/new")}>
                   <Plus size={16} /> Admit student
                 </button>
               ) : null

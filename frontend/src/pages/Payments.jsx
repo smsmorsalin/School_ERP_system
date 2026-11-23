@@ -78,7 +78,7 @@ export default function Payments() {
 
       <div className="grid-2">
         <Card title="Collection trend" subtitle="Monthly totals · last 12 months">
-          {summary.loading ? <Loading /> : monthly.length ? <AreaChart data={monthly} color="#10b981" formatValue={(value) => money(value, { decimals: 0 })} height={230} /> : <EmptyState icon={Banknote} title="No payments yet" />}
+          {summary.loading ? <Loading /> : monthly.length ? <AreaChart data={monthly} color="#b7791f" formatValue={(value) => money(value, { decimals: 0 })} height={230} /> : <EmptyState icon={Banknote} title="No payments yet" />}
         </Card>
         <Card title="By payment method" subtitle="Share of collections">
           {summary.loading ? <Loading /> : byMethod.length ? <DonutChart data={byMethod} centerLabel="Collected" centerValue={money(totals.total_collected, { decimals: 0 })} /> : <EmptyState icon={Receipt} title="No payment data" />}

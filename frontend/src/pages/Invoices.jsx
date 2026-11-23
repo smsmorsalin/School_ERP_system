@@ -177,7 +177,7 @@ function InvoicesView({ canManage }) {
                       <td className="cell-sub">{formatDate(invoice.due_date)}</td>
                       <td><StatusBadge status={invoice.effective_status || invoice.status} /></td>
                       <td className="actions">
-                        <Link className="btn btn-secondary btn-sm" to={`/invoices/${invoice.uuid}`}><FileText size={13} /> View</Link>
+                        <Link className="btn btn-secondary btn-sm" to={`/finance/invoices/${invoice.uuid}`}><FileText size={13} /> View</Link>
                         {canManage && Number(invoice.balance) > 0 && invoice.status !== "cancelled" ? (
                           <button type="button" className="btn btn-primary btn-sm" onClick={() => setPaying(invoice)}><Wallet size={13} /> Pay</button>
                         ) : null}

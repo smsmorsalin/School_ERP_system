@@ -256,7 +256,7 @@ export default function Users() {
                         </td>
                         <td className="cell-sub">{formatDateTime(account.created_at)}</td>
                         <td className="actions">
-                          <Link className="btn btn-secondary btn-sm" to={`/users/${account.uuid}`}>
+                          <Link className="btn btn-secondary btn-sm" to={`/admin/users/${account.uuid}`}>
                             <Eye size={14} /> View
                           </Link>
                         </td>

@@ -42,26 +42,33 @@ students.
 
 ## 🧭 Information architecture
 
-The console follows a conventional ERP shape: a grouped sidebar, a directory
-page for every register, and a dedicated page for entities and multi-step work.
-Short create/edit actions stay in modals; anything that needs context, history
-or several actions has its own URL.
+The console is organised as a grouped sidebar with **one job per page**. Every
+workflow has its own URL, so links are shareable, the browser back button
+behaves, and a screen never mixes unrelated controls. Long create/edit forms
+open in a right-hand drawer over the list they belong to; multi-step work
+(admissions) gets a full page with a sticky guidance aside.
 
 | Sidebar group | Pages |
 |---|---|
 | **Overview** | Dashboard |
-| **People** | Students · student profile (`/students/:uuid`) · Teachers · User accounts · account profile (`/users/:uuid`) |
-| **Academics** | Classes · Sections · Subject catalogue · Class subjects · Timetable |
-| **Attendance** | Mark attendance · Attendance records |
+| **School** | Students · Admissions (`/students/new`) · student profile (`/students/:uuid`) · Teachers |
+| **Academics** | Classes · Sections · Subjects · Curriculum · Timetable |
+| **Attendance** | Take register · Records & trends · My attendance |
 | **Examinations** | Exams · exam workspace (`/exams/:uuid`) · analytics (`/exams/:uuid/analytics`) · mark entry (`/exams/:uuid/papers/:paperUuid`) · Results |
-| **Finance** | Invoices · invoice statement (`/invoices/:uuid`) · Payments · Fee structures · Fee categories |
+| **Finance** | Invoices · invoice detail (`/finance/invoices/:uuid`) · Payments · Fee structures · Fee categories · secure checkout (`/finance/checkout/:uuid`) |
 | **Communication** | Announcements |
-| **Administration** | Roles & access · Audit log · Profile |
+| **Administration** | User accounts · user detail (`/admin/users/:uuid`) · Roles & access · Audit log |
+| **Account** | My profile · Change password |
 
-List pages are built for scanning and filtering; detail pages carry the full
-record, related data and lifecycle actions. URL-driven tabs keep related views
-(for example exam papers vs. analytics, or classes vs. sections) shareable and
-back-button friendly.
+Sidebar items are filtered by role. Students and parents get read-only variants
+(their own record, attendance history, invoices, results); teachers get academic
+and attendance tools; accountants get finance; admins get everything.
+
+List pages are built for scanning and filtering. Detail pages carry the full
+record, related data and lifecycle actions. Legacy URLs (`/classes`, `/fees`,
+`/attendance`, `/invoices/:uuid`, `/users/:uuid`, `/announcements`, …) redirect
+to the new locations, so old bookmarks keep working.
+
 
 ## 🧱 Tech Stack
 
@@ -98,7 +105,7 @@ School_ERP_system/
 │   └── .env.example
 ├── frontend/
 │   ├── src/
-│   │   ├── pages/              # 28 page modules (list, detail and workspace screens)
+│   │   ├── pages/              # 35 page modules (list, detail, workspace, account, auth)
 │   │   ├── components/         # Layout, charts, UI primitives
 │   │   ├── context/            # Auth + toast providers
 │   │   ├── lib/                # API client, formatting, theme, hooks
@@ -261,17 +268,25 @@ See [ARCHITECTURE.md](ARCHITECTURE.md#-security-model) for the full model.
 
 ## 🎨 Accessibility & design audit
 
-The frontend is audited with real Lighthouse runs (desktop preset) across every
-route in both light and dark themes. Every audited page scores **100
+The frontend is audited with Lighthouse (desktop preset) in both light and dark
+themes. After the console redesign, the main routes re-audit at **100
 Accessibility / 100 Best Practices** with zero failures. SEO is intentionally
 not scored: the ERP is a private console and `robots.txt` disallows crawling.
 
-- **Design system:** Inter-first type stack, layered shadows, `--ring` focus
-  visible rings, and a cohesive "professional polish" layer (stat-card hover
-  lift, table header gradient, badge hairline edge, input hover, sidebar active
-  accent rail, modal blur, slim scrollbars, reduced-motion support).
-- **WCAG AA contrast:** fixed at the token level (`--muted` light `#667085`,
-  dark `#8593b3`) so every surface clears 4.5:1 in both themes.
+- **Design system:** a "timetable board" console — chalkboard-green sidebar,
+  warm paper surfaces, green ink and a brass accent; ruled section headers,
+  stamp-style badges, tabular numerals, a 4/7/10px radius scale and layered,
+  offset shadows. Type uses the native UI sans stack, with a monospace face
+  reserved for IDs, codes and money.
+- **WCAG AA contrast:** fixed at the token level (`--muted` light `#637068`,
+  dark `#8b9c91`) so body and secondary text clear 4.5:1 on paper, tinted
+  surfaces and the dark theme.
+- **Layout system:** grouped sidebar, one workflow per page, right-hand drawers
+  for long forms, full-page multi-step admission, toolbar-first lists and
+  consistent page headers.
+- **Responsive:** the sidebar becomes an off-canvas panel below 960px, list
+  grids collapse to one column, tables scroll inside their card and page
+  actions wrap instead of overflowing.
 - **Light/dark toggle:** a topbar Moon/Sun theme switcher (persisted to
   `localStorage` as `school-erp-theme`) with an inline theme bootstrap in
   `index.html` so `data-theme` is set before first paint — no flash of the
@@ -325,7 +340,8 @@ All endpoints are under `/api/v1/` and use UUID lookup. Paginated responses use:
 - **Status:** ✅ Complete — backend + frontend + tests + docs
 - **Roles:** Admin, Teacher, Accountant, Student, Parent
 - **Tests:** 112 passing
-- **Accessibility:** 100 Accessibility / 100 Best Practices (Lighthouse, every route, light + dark); SEO intentionally disabled via `robots.txt`
+- **Accessibility:** 100 Accessibility / 100 Best Practices (Lighthouse, main routes, light + dark); SEO intentionally disabled via `robots.txt`
+- **Console:** grouped sidebar with one workflow per page, right-hand drawers for long forms, full-page admissions flow, legacy URL redirects
 - **Theme:** light/dark toggle (Moon/Sun) persisted to localStorage
 - **Online payments:** Sandbox-ready; live mode requires provider credentials
 - **Audit:** Append-only trail with admin viewer and read-only API
@@ -452,5 +468,23 @@ As the school grows, additional roles may be needed:
 | Saved filter views per user | Not implemented |
 | Global command palette (⌘K) | Not implemented |
 
+### 🖥️ Console & workflow — queued next
+
+These follow directly from the page-per-workflow redesign. Details, scope and
+acceptance notes are in [`FUTURE_IMPLEMENTATION.md`](FUTURE_IMPLEMENTATION.md#p36--console--workflow-backlog-queued-next).
+
+| Goal | Current limitation |
+|------|-------------------|
+| Student 360 workspace (overview, guardians, fees, results, documents) | Student profile is still one long page |
+| Admissions pipeline with review and approval | Admission is a single create form |
+| Academic-year rollover wizard (promote, copy, archive) | No promotion or year-close workflow |
+| Timetable builder with teacher/room clash detection | Grid is edited manually |
+| Attendance correction request/approval flow | Corrections are direct edits |
+| Guardian directory with sibling linking | Guardians are managed from a student only |
+| Student document vault | Only profile photos can be uploaded |
+| Notification centre with grouped alerts | Bell shows counts but no inbox |
+| Design system gallery and `DESIGN.md` | No contributor reference for tokens/components |
+| Frontend test suite (Vitest + Playwright) | No frontend tests |
+
 See [`FUTURE_IMPLEMENTATION.md`](FUTURE_IMPLEMENTATION.md) for the prioritised
-backlog (P0 go-live items through P5 QA) and the pre-push checklist.
+backlog (P0 go-live items through P6 QA) and the pre-push checklist.

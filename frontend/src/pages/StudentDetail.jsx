@@ -249,7 +249,7 @@ export default function StudentDetail() {
               {[
                 { to: "/attendance/records", label: "Attendance history", hint: "Daily register and trends", icon: CalendarCheck },
                 { to: "/results", label: "Exam results", hint: "Marks, grades and report cards", icon: ClipboardList },
-                { to: `/invoices?student=${student.uuid}`, label: "Fee invoices", hint: "Bills, payments and balances", icon: Receipt },
+                { to: `/finance/invoices?student=${student.uuid}`, label: "Fee invoices", hint: "Bills, payments and balances", icon: Receipt },
               ].map((item) => {
                 const Icon = item.icon;
                 return (

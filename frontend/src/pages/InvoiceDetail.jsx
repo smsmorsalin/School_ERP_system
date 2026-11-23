@@ -53,7 +53,7 @@ export default function InvoiceDetail() {
   if (receiptState.error) {
     return (
       <>
-        <Breadcrumbs items={[{ label: "Invoices", to: "/invoices" }, { label: "Invoice" }]} />
+        <Breadcrumbs items={[{ label: "Invoices", to: "/finance/invoices" }, { label: "Invoice" }]} />
         <ErrorBanner error={receiptState.error} />
       </>
     );
@@ -62,7 +62,7 @@ export default function InvoiceDetail() {
   if (!invoice) {
     return (
       <>
-        <Breadcrumbs items={[{ label: "Invoices", to: "/invoices" }, { label: "Invoice" }]} />
+        <Breadcrumbs items={[{ label: "Invoices", to: "/finance/invoices" }, { label: "Invoice" }]} />
         <Card><EmptyState icon={Receipt} title="Invoice not found" description="It may have been removed or you may not have access." /></Card>
       </>
     );
@@ -70,7 +70,7 @@ export default function InvoiceDetail() {
 
   return (
     <>
-      <Breadcrumbs items={[{ label: "Invoices", to: "/invoices" }, { label: invoice.invoice_number }]} />
+      <Breadcrumbs items={[{ label: "Invoices", to: "/finance/invoices" }, { label: invoice.invoice_number }]} />
       <PageHeader
         title={invoice.invoice_number}
         subtitle={`${invoice.title} · ${invoice.student_name}`}

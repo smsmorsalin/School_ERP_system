@@ -136,14 +136,92 @@ export function EmptyState({ icon, title = "Nothing here yet", description, acti
   );
 }
 
-export function PageHeader({ title, subtitle, actions }) {
+export function PageHeader({ title, subtitle, actions, meta }) {
   return (
     <div className="page-head">
       <div>
         <h2>{title}</h2>
         {subtitle ? <p>{subtitle}</p> : null}
+        {meta ? <div className="page-meta">{meta}</div> : null}
       </div>
       {actions ? <div className="page-actions">{actions}</div> : null}
+    </div>
+  );
+}
+
+/**
+ * Page-level filter bar. Keeps the result count on the left and the
+ * controls on the right so every list page reads the same way.
+ */
+export function Toolbar({ children, meta }) {
+  return (
+    <div className="toolbar">
+      {meta ? <div className="toolbar-meta">{meta}</div> : null}
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Right-hand form panel. Long create/edit forms belong here rather than in
+ * a centered modal: the page stays visible and the form gets room to breathe.
+ * API deliberately mirrors Modal so a form can move between the two.
+ */
+export function Drawer({
+  open,
+  onClose,
+  title,
+  subtitle,
+  children,
+  footer,
+  size = "",
+  closeOnOverlay = true,
+}) {
+  useEffect(() => {
+    if (!open) return undefined;
+    const handler = (event) => {
+      if (event.key === "Escape" && onClose) onClose();
+    };
+    document.addEventListener("keydown", handler);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handler);
+      document.body.style.overflow = previous;
+    };
+  }, [open, onClose]);
+
+  if (!open) return null;
+  return createPortal(
+    <div
+      className="drawer-overlay"
+      onMouseDown={(event) => {
+        if (closeOnOverlay && event.target === event.currentTarget) onClose?.();
+      }}
+    >
+      <aside className={`drawer ${size}`} role="dialog" aria-modal="true" aria-label={title}>
+        <div className="drawer-head">
+          <div>
+            <h3>{title}</h3>
+            {subtitle ? <p>{subtitle}</p> : null}
+          </div>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close panel">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="drawer-body">{children}</div>
+        {footer ? <div className="drawer-foot">{footer}</div> : null}
+      </aside>
+    </div>,
+    document.body
+  );
+}
+
+/** Small labelled marker used inside page headers and section rules. */
+export function SectionRule({ children }) {
+  return (
+    <div className="section-rule">
+      <h3>{children}</h3>
     </div>
   );
 }

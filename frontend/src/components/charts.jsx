@@ -1,6 +1,6 @@
 import { useId } from "react";
 
-const palette = ["#4f46e5", "#10b981", "#f59e0b", "#ef4444", "#06b6d4", "#8b5cf6", "#ec4899"];
+const palette = ["#17613d", "#b7791f", "#1f5f99", "#b42318", "#2f7d6b", "#6b5b95", "#a34d6b"];
 
 function niceMax(value) {
   if (value <= 0) return 10;
@@ -11,7 +11,7 @@ function niceMax(value) {
   return step * base;
 }
 
-export function AreaChart({ data = [], color = "#4f46e5", height = 250, formatValue }) {
+export function AreaChart({ data = [], color = "#17613d", height = 250, formatValue }) {
   const gradientId = useId();
   if (!data.length) {
     return <div className="empty" style={{ padding: 30 }}>No data for this period.</div>;
@@ -52,10 +52,10 @@ export function AreaChart({ data = [], color = "#4f46e5", height = 250, formatVa
               x2={width - padding.right}
               y1={y}
               y2={y}
-              stroke="#eef1f6"
+              stroke="var(--border)"
               strokeWidth="1"
             />
-            <text x={padding.left - 9} y={y + 4} textAnchor="end" fontSize="10" fill="#94a3b8">
+            <text x={padding.left - 9} y={y + 4} textAnchor="end" fontSize="10" fill="var(--muted)">
               {formatValue ? formatValue(max * tick) : Math.round(max * tick)}
             </text>
           </g>
@@ -69,7 +69,7 @@ export function AreaChart({ data = [], color = "#4f46e5", height = 250, formatVa
             <title>{`${point.label}: ${formatValue ? formatValue(point.value) : point.value}`}</title>
           </circle>
           {index % labelStep === 0 || index === points.length - 1 ? (
-            <text x={point.x} y={height - 9} textAnchor="middle" fontSize="10" fill="#94a3b8">
+            <text x={point.x} y={height - 9} textAnchor="middle" fontSize="10" fill="var(--muted)">
               {point.label}
             </text>
           ) : null}
@@ -79,7 +79,7 @@ export function AreaChart({ data = [], color = "#4f46e5", height = 250, formatVa
   );
 }
 
-export function BarChart({ data = [], height = 250, color = "#4f46e5", formatValue }) {
+export function BarChart({ data = [], height = 250, color = "#17613d", formatValue }) {
   if (!data.length) {
     return <div className="empty" style={{ padding: 30 }}>No data to display.</div>;
   }
@@ -98,8 +98,8 @@ export function BarChart({ data = [], height = 250, color = "#4f46e5", formatVal
         const y = padding.top + innerH - tick * innerH;
         return (
           <g key={tick}>
-            <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="#eef1f6" />
-            <text x={padding.left - 9} y={y + 4} textAnchor="end" fontSize="10" fill="#94a3b8">
+            <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="var(--border)" />
+            <text x={padding.left - 9} y={y + 4} textAnchor="end" fontSize="10" fill="var(--muted)">
               {formatValue ? formatValue(max * tick) : Math.round(max * tick)}
             </text>
           </g>
@@ -115,7 +115,7 @@ export function BarChart({ data = [], height = 250, color = "#4f46e5", formatVal
             <rect x={x} y={y} width={barW} height={Math.max(barH, 2)} rx="5" fill={item.color || color} opacity="0.9">
               <title>{`${item.label}: ${formatValue ? formatValue(value) : value}`}</title>
             </rect>
-            <text x={x + barW / 2} y={height - 10} textAnchor="middle" fontSize="10" fill="#94a3b8">
+            <text x={x + barW / 2} y={height - 10} textAnchor="middle" fontSize="10" fill="var(--muted)">
               {item.label}
             </text>
           </g>
@@ -135,7 +135,7 @@ export function DonutChart({ data = [], size = 190, thickness = 26, centerLabel,
     <div style={{ display: "flex", alignItems: "center", gap: 22, flexWrap: "wrap" }}>
       <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Donut chart">
-          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#eef1f6" strokeWidth={thickness} />
+          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--border)" strokeWidth={thickness} />
           {total > 0 &&
             data.map((item, index) => {
               const value = Number(item.value) || 0;

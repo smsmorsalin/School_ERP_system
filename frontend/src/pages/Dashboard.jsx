@@ -106,17 +106,17 @@ export default function Dashboard() {
           <>
             <RoleBadge role={user?.primary_role} />
             {isAdmin ? (
-              <Link to="/students?new=1" className="btn btn-primary">
+              <Link to="/students/new" className="btn btn-primary">
                 <UserPlus size={16} /> Admit student
               </Link>
             ) : null}
             {hasRole("Teacher") ? (
-              <Link to="/attendance" className="btn btn-primary">
+              <Link to="/attendance/register" className="btn btn-primary">
                 <CalendarCheck size={16} /> Mark attendance
               </Link>
             ) : null}
             {hasRole("Accountant") ? (
-              <Link to="/invoices" className="btn btn-primary">
+              <Link to="/finance/invoices" className="btn btn-primary">
                 <Receipt size={16} /> Record payment
               </Link>
             ) : null}
@@ -140,7 +140,7 @@ export default function Dashboard() {
           title="Latest announcements"
           subtitle={`${data.unread_announcements || 0} unread`}
           actions={
-            <Link to="/announcements" className="btn btn-ghost btn-sm">
+            <Link to="/communication/announcements" className="btn btn-ghost btn-sm">
               View all <ArrowUpRight size={14} />
             </Link>
           }
@@ -151,7 +151,7 @@ export default function Dashboard() {
               {data.announcements.map((item) => (
                 <Link
                   key={item.uuid}
-                  to="/announcements"
+                  to="/communication/announcements"
                   style={{ display: "block", padding: "11px 12px", borderRadius: 10, background: "var(--surface-2)", marginBottom: 8 }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -217,9 +217,9 @@ function AdminDashboard({ data, stats, fees, attendance }) {
       </div>
 
       <div className="grid-main-side">
-        <Card title="Fee collection" subtitle="Monthly payments received" actions={<Link to="/payments" className="btn btn-ghost btn-sm">Details</Link>}>
+        <Card title="Fee collection" subtitle="Monthly payments received" actions={<Link to="/finance/payments" className="btn btn-ghost btn-sm">Details</Link>}>
           {data.collection_trend?.length ? (
-            <AreaChart data={trendPoints(data.collection_trend)} color="#4f46e5" formatValue={(value) => compactMoney(value)} />
+            <AreaChart data={trendPoints(data.collection_trend)} color="#b7791f" formatValue={(value) => compactMoney(value)} />
           ) : (
             <EmptyState icon={Banknote} title="No payments yet" description="Collections will appear as payments are recorded." />
           )}
@@ -266,7 +266,7 @@ function AdminDashboard({ data, stats, fees, attendance }) {
       <div className="grid-2" style={{ marginTop: 20 }}>
         <Card title="Attendance trend" subtitle="Last 14 days">
           {attendance.daily?.length ? (
-            <AreaChart data={attendancePoints(attendance.daily)} color="#06b6d4" formatValue={(value) => `${Math.round(value)}%`} />
+            <AreaChart data={attendancePoints(attendance.daily)} color="#17613d" formatValue={(value) => `${Math.round(value)}%`} />
           ) : (
             <EmptyState icon={CalendarCheck} title="No attendance recorded" />
           )}
@@ -319,7 +319,7 @@ function TeacherDashboard({ data, stats, attendance }) {
       <div className="grid-main-side">
         <Card title="Attendance trend" subtitle="Your sections · last 14 days">
           {attendance.daily?.length ? (
-            <AreaChart data={attendancePoints(attendance.daily)} color="#06b6d4" formatValue={(value) => `${Math.round(value)}%`} />
+            <AreaChart data={attendancePoints(attendance.daily)} color="#17613d" formatValue={(value) => `${Math.round(value)}%`} />
           ) : (
             <EmptyState icon={CalendarCheck} title="No attendance yet" description="Start by marking today's attendance." />
           )}
@@ -329,7 +329,7 @@ function TeacherDashboard({ data, stats, attendance }) {
             data.sections.map((section) => (
               <Link
                 key={section.uuid}
-                to={`/attendance?section=${section.uuid}`}
+                to={`/attendance/register?section=${section.uuid}`}
                 style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 18px", borderBottom: "1px solid var(--border)" }}
               >
                 <div className="stat-icon indigo" style={{ width: 38, height: 38 }}>
@@ -361,10 +361,10 @@ function TeacherDashboard({ data, stats, attendance }) {
         </Card>
         <Card title="Quick actions">
           <div style={{ display: "grid", gap: 10 }}>
-            <Link to="/attendance" className="btn btn-secondary" style={{ justifyContent: "flex-start" }}><CalendarCheck size={16} /> Mark attendance</Link>
+            <Link to="/attendance/register" className="btn btn-secondary" style={{ justifyContent: "flex-start" }}><CalendarCheck size={16} /> Mark attendance</Link>
             <Link to="/exams" className="btn btn-secondary" style={{ justifyContent: "flex-start" }}><ClipboardList size={16} /> Enter exam marks</Link>
             <Link to="/students" className="btn btn-secondary" style={{ justifyContent: "flex-start" }}><GraduationCap size={16} /> View my students</Link>
-            <Link to="/announcements" className="btn btn-secondary" style={{ justifyContent: "flex-start" }}><Megaphone size={16} /> Post an announcement</Link>
+            <Link to="/communication/announcements" className="btn btn-secondary" style={{ justifyContent: "flex-start" }}><Megaphone size={16} /> Post an announcement</Link>
           </div>
         </Card>
       </div>
@@ -385,7 +385,7 @@ function AccountantDashboard({ data, stats, fees }) {
       <div className="grid-main-side">
         <Card title="Collection trend" subtitle="Monthly payments">
           {data.collection_trend?.length ? (
-            <AreaChart data={trendPoints(data.collection_trend)} color="#10b981" formatValue={(value) => compactMoney(value)} />
+            <AreaChart data={trendPoints(data.collection_trend)} color="#b7791f" formatValue={(value) => compactMoney(value)} />
           ) : (
             <EmptyState icon={Banknote} title="No payments yet" />
           )}
@@ -397,13 +397,13 @@ function AccountantDashboard({ data, stats, fees }) {
             <span style={{ width: `${fees.billed ? Math.round((fees.collected / fees.billed) * 100) : 0}%` }} />
           </div>
           <div style={{ display: "grid", gap: 9, marginTop: 18 }}>
-            <Link to="/invoices?status=unpaid" className="btn btn-secondary btn-sm" style={{ justifyContent: "space-between" }}>
+            <Link to="/finance/invoices?status=unpaid" className="btn btn-secondary btn-sm" style={{ justifyContent: "space-between" }}>
               Unpaid invoices <ArrowUpRight size={14} />
             </Link>
-            <Link to="/invoices?status=partial" className="btn btn-secondary btn-sm" style={{ justifyContent: "space-between" }}>
+            <Link to="/finance/invoices?status=partial" className="btn btn-secondary btn-sm" style={{ justifyContent: "space-between" }}>
               Partially paid <ArrowUpRight size={14} />
             </Link>
-            <Link to="/payments" className="btn btn-secondary btn-sm" style={{ justifyContent: "space-between" }}>
+            <Link to="/finance/payments" className="btn btn-secondary btn-sm" style={{ justifyContent: "space-between" }}>
               Payment history <ArrowUpRight size={14} />
             </Link>
           </div>
@@ -467,7 +467,7 @@ function FamilyDashboard({ data, stats, fees, attendance }) {
                 <button type="button" className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => navigate(`/results?student=${child.uuid}`)}>
                   Report card
                 </button>
-                <button type="button" className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => navigate(`/invoices?student=${child.uuid}`)}>
+                <button type="button" className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => navigate(`/finance/invoices?student=${child.uuid}`)}>
                   Fees
                 </button>
               </div>
@@ -479,7 +479,7 @@ function FamilyDashboard({ data, stats, fees, attendance }) {
       <div className="grid-main-side">
         <Card title="Attendance history" subtitle="Last 30 days">
           {attendance.daily?.length ? (
-            <AreaChart data={attendancePoints(attendance.daily)} color="#10b981" formatValue={(value) => `${Math.round(value)}%`} />
+            <AreaChart data={attendancePoints(attendance.daily)} color="#b7791f" formatValue={(value) => `${Math.round(value)}%`} />
           ) : (
             <EmptyState icon={CalendarCheck} title="No attendance recorded yet" />
           )}

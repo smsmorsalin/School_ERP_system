@@ -5,6 +5,8 @@ prioritised from "should do before go-live" to "optional polish / feature ideas"
 
 Items marked **[done]** have been implemented and verified (see `AI_HANDOFF.md`).
 New analysis-driven items are grouped under **P3.5 — New opportunities**.
+The page-per-workflow console redesign produced a queued backlog in
+**P3.6 — Console & workflow backlog**.
 
 ---
 

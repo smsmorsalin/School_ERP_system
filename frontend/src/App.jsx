@@ -1,4 +1,4 @@
-import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { GraduationCap } from "lucide-react";
 import { useAuth } from "./context/AuthContext";
 import Layout from "./components/Layout";
@@ -10,15 +10,21 @@ import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Students from "./pages/Students";
 import StudentDetail from "./pages/StudentDetail";
+import AdmissionsPage from "./pages/students/AdmissionsPage";
 import Teachers from "./pages/Teachers";
-import Classes from "./pages/Classes";
-import Subjects from "./pages/Subjects";
+import ClassesPage from "./pages/academics/ClassesPage";
+import SectionsPage from "./pages/academics/SectionsPage";
+import SubjectsPage from "./pages/academics/SubjectsPage";
+import CurriculumPage from "./pages/academics/CurriculumPage";
 import Timetable from "./pages/Timetable";
-import Attendance from "./pages/Attendance";
+import RegisterPage from "./pages/attendance/RegisterPage";
+import RecordsPage from "./pages/attendance/RecordsPage";
+import MyAttendancePage from "./pages/attendance/MyAttendancePage";
 import Exams from "./pages/Exams";
 import ExamWorkspace, { ExamMarksPage } from "./pages/ExamWorkspace";
 import Results from "./pages/Results";
-import Fees from "./pages/Fees";
+import FeeStructuresPage from "./pages/finance/FeeStructuresPage";
+import FeeCategoriesPage from "./pages/finance/FeeCategoriesPage";
 import Invoices from "./pages/Invoices";
 import InvoiceDetail from "./pages/InvoiceDetail";
 import Payments from "./pages/Payments";
@@ -29,6 +35,7 @@ import UserDetail from "./pages/UserDetail";
 import Roles from "./pages/Roles";
 import Audit from "./pages/Audit";
 import Profile from "./pages/Profile";
+import PasswordPage from "./pages/account/PasswordPage";
 import NotFound from "./pages/NotFound";
 
 function Splash({ label = "Preparing your workspace…" }) {
@@ -79,6 +86,29 @@ function RequireRole({ roles, children }) {
   return children;
 }
 
+/** Old bookmarks land on the new dedicated attendance page for their role. */
+function LegacyAttendanceRedirect() {
+  const { user } = useAuth();
+  const roles = user?.roles || [];
+  const staff = roles.some((role) => ["Admin", "Teacher"].includes(role));
+  return <Navigate to={staff ? "/attendance/register" : "/attendance/mine"} replace />;
+}
+
+function LegacyInvoiceRedirect() {
+  const { uuid } = useParams();
+  return <Navigate to={`/finance/invoices/${uuid}`} replace />;
+}
+
+function LegacyUserRedirect() {
+  const { uuid } = useParams();
+  return <Navigate to={`/admin/users/${uuid}`} replace />;
+}
+
+function LegacyCheckoutRedirect() {
+  const { uuid } = useParams();
+  return <Navigate to={`/finance/checkout/${uuid}`} replace />;
+}
+
 export default function App() {
   const { user, booting } = useAuth();
 
@@ -111,12 +141,19 @@ export default function App() {
         <Route
           path="students"
           element={
-            <RequireRole roles={["Admin", "Teacher", "Accountant", "Parent"]}>
+            <RequireRole roles={["Admin", "Teacher", "Accountant", "Parent", "Student"]}>
               <Students />
             </RequireRole>
           }
         />
-
+        <Route
+          path="students/new"
+          element={
+            <RequireRole roles={["Admin"]}>
+              <AdmissionsPage />
+            </RequireRole>
+          }
+        />
         <Route
           path="students/:uuid"
           element={
@@ -135,79 +172,47 @@ export default function App() {
           }
         />
 
+        <Route path="academics/classes" element={<ClassesPage />} />
+        <Route path="academics/sections" element={<SectionsPage />} />
         <Route
-          path="users"
-          element={
-            <RequireRole roles={["Admin"]}>
-              <Users />
-            </RequireRole>
-          }
-        />
-
-        <Route
-          path="users/:uuid"
-          element={
-            <RequireRole roles={["Admin"]}>
-              <UserDetail />
-            </RequireRole>
-          }
-        />
-
-        <Route
-          path="roles"
-          element={
-            <RequireRole roles={["Admin"]}>
-              <Roles />
-            </RequireRole>
-          }
-        />
-
-        <Route
-          path="audit"
-          element={
-            <RequireRole roles={["Admin"]}>
-              <Audit />
-            </RequireRole>
-          }
-        />
-
-        <Route path="classes" element={<Classes />} />
-        <Route path="sections" element={<Classes />} />
-
-        <Route
-          path="subjects"
+          path="academics/subjects"
           element={
             <RequireRole roles={["Admin", "Teacher", "Student", "Parent"]}>
-              <Subjects />
+              <SubjectsPage />
             </RequireRole>
           }
         />
-
         <Route
-          path="subjects/assignments"
+          path="academics/curriculum"
           element={
             <RequireRole roles={["Admin", "Teacher", "Student", "Parent"]}>
-              <Subjects />
+              <CurriculumPage />
             </RequireRole>
           }
         />
-
-        <Route path="timetable" element={<Timetable />} />
+        <Route path="academics/timetable" element={<Timetable />} />
 
         <Route
-          path="attendance"
+          path="attendance/register"
           element={
-            <RequireRole roles={["Admin", "Teacher", "Student", "Parent"]}>
-              <Attendance />
+            <RequireRole roles={["Admin", "Teacher"]}>
+              <RegisterPage />
             </RequireRole>
           }
         />
-
         <Route
           path="attendance/records"
           element={
-            <RequireRole roles={["Admin", "Teacher", "Student", "Parent"]}>
-              <Attendance />
+            <RequireRole roles={["Admin", "Teacher"]}>
+              <RecordsPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="attendance/mine"
+          element={
+            <RequireRole roles={["Student", "Parent"]}>
+              <MyAttendancePage />
             </RequireRole>
           }
         />
@@ -220,7 +225,6 @@ export default function App() {
             </RequireRole>
           }
         />
-
         <Route
           path="exams/:uuid"
           element={
@@ -229,7 +233,6 @@ export default function App() {
             </RequireRole>
           }
         />
-
         <Route
           path="exams/:uuid/analytics"
           element={
@@ -238,7 +241,6 @@ export default function App() {
             </RequireRole>
           }
         />
-
         <Route
           path="exams/:uuid/papers/:paperUuid"
           element={
@@ -247,7 +249,6 @@ export default function App() {
             </RequireRole>
           }
         />
-
         <Route
           path="results"
           element={
@@ -258,52 +259,47 @@ export default function App() {
         />
 
         <Route
-          path="fees"
+          path="finance/fee-structures"
           element={
             <RequireRole roles={["Admin", "Accountant"]}>
-              <Fees />
+              <FeeStructuresPage />
             </RequireRole>
           }
         />
-
         <Route
-          path="fees/categories"
+          path="finance/fee-categories"
           element={
             <RequireRole roles={["Admin", "Accountant"]}>
-              <Fees />
+              <FeeCategoriesPage />
             </RequireRole>
           }
         />
-
         <Route
-          path="invoices"
+          path="finance/invoices"
           element={
             <RequireRole roles={["Admin", "Accountant", "Student", "Parent"]}>
               <Invoices />
             </RequireRole>
           }
         />
-
         <Route
-          path="invoices/:uuid"
+          path="finance/invoices/:uuid"
           element={
             <RequireRole roles={["Admin", "Accountant", "Student", "Parent"]}>
               <InvoiceDetail />
             </RequireRole>
           }
         />
-
         <Route
-          path="payments"
+          path="finance/payments"
           element={
             <RequireRole roles={["Admin", "Accountant"]}>
               <Payments />
             </RequireRole>
           }
         />
-
         <Route
-          path="checkout/:uuid"
+          path="finance/checkout/:uuid"
           element={
             <RequireRole roles={["Admin", "Accountant", "Student", "Parent"]}>
               <Checkout />
@@ -311,8 +307,65 @@ export default function App() {
           }
         />
 
-        <Route path="announcements" element={<Announcements />} />
-        <Route path="profile" element={<Profile />} />
+        <Route path="communication/announcements" element={<Announcements />} />
+
+        <Route
+          path="admin/users"
+          element={
+            <RequireRole roles={["Admin"]}>
+              <Users />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="admin/users/:uuid"
+          element={
+            <RequireRole roles={["Admin"]}>
+              <UserDetail />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="admin/roles"
+          element={
+            <RequireRole roles={["Admin"]}>
+              <Roles />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="admin/audit"
+          element={
+            <RequireRole roles={["Admin"]}>
+              <Audit />
+            </RequireRole>
+          }
+        />
+
+        <Route path="account/profile" element={<Profile />} />
+        <Route path="account/security/password" element={<PasswordPage />} />
+
+        {/* Legacy URLs: keep old bookmarks working while the IA settles. */}
+        <Route path="classes" element={<Navigate to="/academics/classes" replace />} />
+        <Route path="sections" element={<Navigate to="/academics/sections" replace />} />
+        <Route path="subjects" element={<Navigate to="/academics/subjects" replace />} />
+        <Route path="subjects/assignments" element={<Navigate to="/academics/curriculum" replace />} />
+        <Route path="timetable" element={<Navigate to="/academics/timetable" replace />} />
+        <Route path="attendance" element={<LegacyAttendanceRedirect />} />
+        <Route path="fees" element={<Navigate to="/finance/fee-structures" replace />} />
+        <Route path="fees/categories" element={<Navigate to="/finance/fee-categories" replace />} />
+        <Route path="invoices" element={<Navigate to="/finance/invoices" replace />} />
+        <Route path="invoices/:uuid" element={<LegacyInvoiceRedirect />} />
+        <Route path="payments" element={<Navigate to="/finance/payments" replace />} />
+        <Route path="checkout/:uuid" element={<LegacyCheckoutRedirect />} />
+        <Route path="announcements" element={<Navigate to="/communication/announcements" replace />} />
+        <Route path="users" element={<Navigate to="/admin/users" replace />} />
+        <Route path="users/:uuid" element={<LegacyUserRedirect />} />
+        <Route path="roles" element={<Navigate to="/admin/roles" replace />} />
+        <Route path="audit" element={<Navigate to="/admin/audit" replace />} />
+        <Route path="profile" element={<Navigate to="/account/profile" replace />} />
+        <Route path="account/security" element={<Navigate to="/account/profile" replace />} />
+
         <Route path="*" element={<NotFound />} />
       </Route>
 

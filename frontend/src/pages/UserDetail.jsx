@@ -93,7 +93,7 @@ export default function UserDetail() {
     try {
       await api.delete(`/accounts/users/${uuid}/`);
       toast.success("Account deactivated and detached from active roles.");
-      navigate("/users", { replace: true });
+      navigate("/admin/users", { replace: true });
     } catch (error) {
       setActionError(error);
       setDeleteOpen(false);
@@ -109,7 +109,7 @@ export default function UserDetail() {
   if (state.error) {
     return (
       <>
-        <Breadcrumbs items={[{ label: "User accounts", to: "/users" }, { label: "Account" }]} />
+        <Breadcrumbs items={[{ label: "User accounts", to: "/admin/users" }, { label: "Account" }]} />
         <ErrorBanner error={state.error} />
       </>
     );
@@ -118,7 +118,7 @@ export default function UserDetail() {
   if (!account) {
     return (
       <>
-        <Breadcrumbs items={[{ label: "User accounts", to: "/users" }, { label: "Account" }]} />
+        <Breadcrumbs items={[{ label: "User accounts", to: "/admin/users" }, { label: "Account" }]} />
         <Card><EmptyState icon={ShieldCheck} title="Account not found" description="It may have been removed or you may not have access." /></Card>
       </>
     );
@@ -126,7 +126,7 @@ export default function UserDetail() {
 
   return (
     <>
-      <Breadcrumbs items={[{ label: "User accounts", to: "/users" }, { label: account.full_name }]} />
+      <Breadcrumbs items={[{ label: "User accounts", to: "/admin/users" }, { label: account.full_name }]} />
 
       <div className="detail-hero">
         <Avatar name={account.full_name} src={account.profile_image_url} size="lg" />

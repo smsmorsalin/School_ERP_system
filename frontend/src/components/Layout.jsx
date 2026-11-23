@@ -26,6 +26,7 @@ import {
   Sun,
   Tags,
   UserCircle,
+  UserPlus,
   Users,
   Wallet,
   X,
@@ -33,7 +34,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { api } from "../lib/api";
-import { useDebounced } from "../lib/hooks";
+import { useAll, useDebounced } from "../lib/hooks";
 import { setStoredTheme } from "../lib/theme";
 import { formatDate, relativeTime } from "../lib/format";
 import { Avatar, Badge } from "./ui";
@@ -46,107 +47,110 @@ const FINANCE = all("Admin", "Accountant");
 
 const NAV_GROUPS = [
   {
-    title: "Overview",
-    items: [{ to: "/", label: "Dashboard", icon: LayoutDashboard, roles: EVERYONE }],
-  },
-  {
-    title: "People",
+    title: "School",
     items: [
-      { to: "/students", label: "Students", icon: GraduationCap, roles: all("Admin", "Teacher", "Accountant") },
+      { to: "/", label: "Overview", icon: LayoutDashboard, roles: EVERYONE, end: true },
+      { to: "/students", label: "Students", icon: GraduationCap, roles: all("Admin", "Teacher", "Accountant"), end: true },
+      { to: "/students/new", label: "Admissions", icon: UserPlus, roles: all("Admin") },
       { to: "/students", label: "My children", icon: GraduationCap, roles: all("Parent") },
+      { to: "/students", label: "My record", icon: GraduationCap, roles: all("Student") },
       { to: "/teachers", label: "Teachers", icon: Users, roles: all("Admin") },
     ],
   },
   {
     title: "Academics",
     items: [
-      { to: "/classes", label: "Classes", icon: BookOpen, roles: EVERYONE },
-      { to: "/sections", label: "Sections", icon: Layers, roles: EVERYONE },
-      { to: "/subjects", label: "Subject catalogue", icon: BookMarked, roles: ACADEMICS, end: true },
-      { to: "/subjects/assignments", label: "Class subjects", icon: Link2, roles: ACADEMICS },
-      { to: "/timetable", label: "Timetable", icon: CalendarDays, roles: EVERYONE },
+      { to: "/academics/classes", label: "Classes", icon: BookOpen, roles: EVERYONE },
+      { to: "/academics/sections", label: "Sections", icon: Layers, roles: EVERYONE },
+      { to: "/academics/subjects", label: "Subjects", icon: BookMarked, roles: ACADEMICS },
+      { to: "/academics/curriculum", label: "Curriculum", icon: Link2, roles: ACADEMICS },
+      { to: "/academics/timetable", label: "Timetable", icon: CalendarDays, roles: EVERYONE },
     ],
   },
   {
     title: "Attendance",
     items: [
-      { to: "/attendance", label: "Mark attendance", icon: CalendarCheck, roles: all("Admin", "Teacher"), end: true },
-      { to: "/attendance/records", label: "Attendance records", icon: History, roles: all("Admin", "Teacher") },
-      { to: "/attendance", label: "My attendance", icon: CalendarCheck, roles: all("Student", "Parent"), end: true },
+      { to: "/attendance/register", label: "Take register", icon: CalendarCheck, roles: all("Admin", "Teacher") },
+      { to: "/attendance/records", label: "Records & trends", icon: History, roles: all("Admin", "Teacher") },
+      { to: "/attendance/mine", label: "My attendance", icon: CalendarCheck, roles: all("Student", "Parent") },
     ],
   },
   {
     title: "Examinations",
     items: [
       { to: "/exams", label: "Exams", icon: FileSpreadsheet, roles: all("Admin", "Teacher") },
-      { to: "/results", label: "Results", icon: GraduationCap, roles: ACADEMICS },
+      { to: "/results", label: "Results & reports", icon: GraduationCap, roles: ACADEMICS },
     ],
   },
   {
     title: "Finance",
     items: [
-      { to: "/invoices", label: "Invoices", icon: Receipt, roles: all("Admin", "Accountant", "Student", "Parent") },
-      { to: "/payments", label: "Payments", icon: Banknote, roles: FINANCE },
-      { to: "/fees", label: "Fee structures", icon: Wallet, roles: FINANCE, end: true },
-      { to: "/fees/categories", label: "Fee categories", icon: Tags, roles: FINANCE },
+      { to: "/finance/invoices", label: "Invoices", icon: Receipt, roles: all("Admin", "Accountant", "Student", "Parent") },
+      { to: "/finance/payments", label: "Payments", icon: Banknote, roles: FINANCE },
+      { to: "/finance/fee-structures", label: "Fee structures", icon: Wallet, roles: FINANCE },
+      { to: "/finance/fee-categories", label: "Fee categories", icon: Tags, roles: FINANCE },
     ],
   },
   {
     title: "Communication",
-    items: [{ to: "/announcements", label: "Announcements", icon: Megaphone, roles: EVERYONE }],
+    items: [{ to: "/communication/announcements", label: "Announcements", icon: Megaphone, roles: EVERYONE }],
   },
   {
     title: "Administration",
     items: [
-      { to: "/users", label: "User accounts", icon: UserCircle, roles: all("Admin") },
-      { to: "/roles", label: "Roles & access", icon: ShieldCheck, roles: all("Admin") },
-      { to: "/audit", label: "Audit log", icon: Activity, roles: all("Admin") },
+      { to: "/admin/users", label: "User accounts", icon: UserCircle, roles: all("Admin") },
+      { to: "/admin/roles", label: "Roles & access", icon: ShieldCheck, roles: all("Admin") },
+      { to: "/admin/audit", label: "Audit log", icon: Activity, roles: all("Admin") },
     ],
   },
 ];
 
 const TITLES = {
-  "/": ["Dashboard", "A live overview of your school"],
-  "/students": ["Students", "Student records and admissions"],
-  "/teachers": ["Teachers", "Teaching staff directory"],
-  "/classes": ["Classes", "Grade levels that organise the school"],
-  "/sections": ["Sections", "Teaching groups, class teachers and rooms"],
-  "/subjects": ["Subjects", "The curriculum catalogue used across the school"],
-  "/subjects/assignments": ["Class subjects", "Subject and teacher assignments per section"],
-  "/timetable": ["Timetable", "Weekly class schedule"],
-  "/attendance": ["Attendance", "Daily register and attendance history"],
-  "/attendance/records": ["Attendance records", "History, trends and exports"],
-  "/exams": ["Examinations", "Exam setup, papers, marks and publishing"],
-  "/results": ["Results", "Marks, grades and report cards"],
-  "/fees": ["Fee structures", "What each class is billed, and when it is due"],
-  "/fees/categories": ["Fee categories", "Billing items available when building class fees"],
-  "/invoices": ["Invoices", "Billing and outstanding balances"],
-  "/payments": ["Payments", "Collections and receipts"],
-  "/checkout": ["Secure checkout", "Complete your fee payment safely"],
-  "/announcements": ["Announcements", "School-wide communication"],
-  "/users": ["User accounts", "Accounts, roles and access"],
-  "/roles": ["Roles & access", "Roles and permission matrix"],
-  "/audit": ["Audit log", "Immutable trail of sensitive actions"],
-  "/profile": ["My profile", "Personal details and security"],
-  "/change-password": ["Change password", "Keep your account secure"],
+  "/": ["School", "Overview"],
+  "/students": ["School", "Students"],
+  "/students/new": ["School", "Admissions"],
+  "/teachers": ["School", "Teachers"],
+  "/academics/classes": ["Academics", "Classes"],
+  "/academics/sections": ["Academics", "Sections"],
+  "/academics/subjects": ["Academics", "Subjects"],
+  "/academics/curriculum": ["Academics", "Curriculum"],
+  "/academics/timetable": ["Academics", "Timetable"],
+  "/attendance/register": ["Attendance", "Take register"],
+  "/attendance/records": ["Attendance", "Records & trends"],
+  "/attendance/mine": ["Attendance", "My attendance"],
+  "/exams": ["Examinations", "Exams"],
+  "/results": ["Examinations", "Results & reports"],
+  "/finance/invoices": ["Finance", "Invoices"],
+  "/finance/payments": ["Finance", "Payments"],
+  "/finance/fee-structures": ["Finance", "Fee structures"],
+  "/finance/fee-categories": ["Finance", "Fee categories"],
+  "/communication/announcements": ["Communication", "Announcements"],
+  "/admin/users": ["Administration", "User accounts"],
+  "/admin/roles": ["Administration", "Roles & access"],
+  "/admin/audit": ["Administration", "Audit log"],
+  "/account/profile": ["Account", "My profile"],
+  "/account/security": ["Account", "Security"],
+  "/account/security/password": ["Account", "Change password"],
 };
 
-/** Resolve the topbar title for detail and workspace routes. */
-function titleFor(pathname) {
+/** Resolve the topbar context for detail and workspace routes. */
+function contextFor(pathname) {
   if (TITLES[pathname]) return TITLES[pathname];
-  if (/^\/exams\/[^/]+\/papers\//.test(pathname)) return ["Mark entry", "Record and save marks for one paper"];
-  if (/^\/exams\/[^/]+\/analytics$/.test(pathname)) return ["Exam analytics", "Grade distribution and averages"];
-  if (/^\/exams\/[^/]+\/?$/.test(pathname)) return ["Exam workspace", "Papers, marks and result publishing"];
-  if (/^\/students\/[^/]+\/?$/.test(pathname)) return ["Student profile", "Enrollment, guardians and related records"];
-  if (/^\/users\/[^/]+\/?$/.test(pathname)) return ["User account", "Profile, access and sign-in activity"];
-  if (/^\/invoices\/[^/]+\/?$/.test(pathname)) return ["Invoice detail", "Statement, payments and balance"];
-  if (pathname.startsWith("/checkout/")) return TITLES["/checkout"];
+  if (/^\/exams\/[^/]+\/papers\//.test(pathname)) return ["Examinations", "Mark entry"];
+  if (/^\/exams\/[^/]+\/analytics$/.test(pathname)) return ["Examinations", "Exam analytics"];
+  if (/^\/exams\/[^/]+\/?$/.test(pathname)) return ["Examinations", "Exam workspace"];
+  if (/^\/students\/[^/]+\/?$/.test(pathname)) return ["School", "Student profile"];
+  if (/^\/admin\/users\/[^/]+\/?$/.test(pathname)) return ["Administration", "User account"];
+  if (/^\/finance\/invoices\/[^/]+\/?$/.test(pathname)) return ["Finance", "Invoice detail"];
+  if (pathname.startsWith("/finance/checkout/")) return ["Finance", "Secure checkout"];
   return ["School ERP", "Management console"];
 }
 
 function Sidebar({ open, onClose }) {
   const { user, logout, isAdmin, hasRole } = useAuth();
   const roleSet = user?.roles || [];
+  const { data: years } = useAll("/academics/academic-years/", { ordering: "-start_date" });
+  const currentYear = years.find((year) => year.is_current) || years[0];
 
   const groups = useMemo(
     () =>
@@ -180,6 +184,16 @@ function Sidebar({ open, onClose }) {
           </button>
         </div>
 
+        {currentYear ? (
+          <div className="sidebar-term">
+            <span className="term-dot" />
+            <div className="term-copy">
+              <strong>{currentYear.name}</strong>
+              <span>{currentYear.is_current ? "Current academic year" : "Academic year"}</span>
+            </div>
+          </div>
+        ) : null}
+
         <nav className="sidebar-nav">
           {groups.map((group) => (
             <div className="nav-group" key={group.title}>
@@ -204,7 +218,7 @@ function Sidebar({ open, onClose }) {
         </nav>
 
         <div className="sidebar-footer">
-          <NavLink to="/profile" className="sidebar-user" onClick={onClose}>
+          <NavLink to="/account/profile" className="sidebar-user" onClick={onClose}>
             <Avatar name={user?.full_name} src={user?.profile_image_url} size="sm" />
             <div className="meta">
               <strong>{user?.full_name}</strong>
@@ -316,7 +330,7 @@ function GlobalSearch() {
                   onClick={() => {
                     setOpen(false);
                     setQuery("");
-                    navigate(`/attendance?section=${item.uuid}`);
+                    navigate(`/academics/sections?class=${item.uuid}`);
                   }}
                 >
                   <BookOpen size={15} />
@@ -421,7 +435,7 @@ function Notifications() {
                   key={item.uuid}
                   onClick={() => {
                     setOpen(false);
-                    navigate("/announcements");
+                    navigate("/communication/announcements");
                   }}
                   style={{
                     display: "block",
@@ -456,7 +470,7 @@ function Notifications() {
               style={{ flex: 1 }}
               onClick={() => {
                 setOpen(false);
-                navigate("/announcements");
+                navigate("/communication/announcements");
               }}
             >
               View all
@@ -528,7 +542,7 @@ function UserMenu() {
               style={{ width: "100%", border: 0, background: "none", cursor: "pointer" }}
               onClick={() => {
                 setOpen(false);
-                navigate("/profile");
+                navigate("/account/profile");
               }}
             >
               <UserCircle size={15} /> My profile
@@ -539,7 +553,7 @@ function UserMenu() {
               style={{ width: "100%", border: 0, background: "none", cursor: "pointer" }}
               onClick={() => {
                 setOpen(false);
-                navigate("/change-password");
+                navigate("/account/security/password");
               }}
             >
               <ShieldCheck size={15} /> Change password
@@ -587,7 +601,7 @@ function ThemeToggle() {
 export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
-  const [title, subtitle] = titleFor(location.pathname);
+  const [section, current] = contextFor(location.pathname);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -608,8 +622,11 @@ export default function Layout() {
             <Menu size={20} />
           </button>
           <div className="topbar-title">
-            <h1>{title}</h1>
-            <p>{subtitle}</p>
+            <span className="topbar-context">
+              <span>{section}</span>
+              <span className="ctx-sep">/</span>
+              <span className="ctx-current">{current}</span>
+            </span>
           </div>
           <div className="topbar-spacer" />
           <GlobalSearch />

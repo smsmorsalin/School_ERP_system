@@ -160,7 +160,7 @@ export default function Profile() {
         title="My profile"
         subtitle="Your personal details, photo and account security"
         actions={
-          <Link to="/change-password" className="btn btn-secondary">
+          <Link to="/account/security/password" className="btn btn-secondary">
             <KeyRound size={16} /> Change password
           </Link>
         }
@@ -340,7 +340,7 @@ export default function Profile() {
                 <strong>Password</strong>
                 <span className="cell-sub">Use a unique password you do not reuse elsewhere.</span>
               </div>
-              <Link to="/change-password" className="btn btn-secondary btn-sm">
+              <Link to="/account/security/password" className="btn btn-secondary btn-sm">
                 <KeyRound size={14} /> Change
               </Link>
             </div>
