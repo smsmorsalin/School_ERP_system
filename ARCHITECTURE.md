@@ -271,7 +271,7 @@ and redirects to login. Nothing sensitive is stored in browser storage.
 header gradient, badge hairline edge, sidebar active accent rail, modal blur,
 slim scrollbars, reduced-motion support). Every token has a dark counterpart
 under `[data-theme="dark"]`, with WCAG AA contrast fixed at the token level
-(`--muted` light `#667085`, dark `#8593b3`). A topbar Moon/Sun `ThemeToggle`
+(`--muted` light `#637068`, dark `#8b9c91`). A topbar Moon/Sun `ThemeToggle`
 (`Layout.jsx`) persists the choice to `localStorage` (`school-erp-theme`) and
 `frontend/public/theme-init.js` sets `data-theme` before first paint so there is
 no flash of the wrong theme. `robots.txt` (`Disallow: /`) is served from

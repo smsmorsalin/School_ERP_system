@@ -487,4 +487,5 @@ acceptance notes are in [`FUTURE_IMPLEMENTATION.md`](FUTURE_IMPLEMENTATION.md#p3
 | Frontend test suite (Vitest + Playwright) | No frontend tests |
 
 See [`FUTURE_IMPLEMENTATION.md`](FUTURE_IMPLEMENTATION.md) for the prioritised
-backlog (P0 go-live items through P6 QA) and the pre-push checklist.
+backlog (P0 go-live items through the P3.6 console backlog) and the pre-push
+checklist.

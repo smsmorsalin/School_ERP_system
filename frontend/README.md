@@ -43,18 +43,17 @@ actions have a dedicated URL.
 | Area | Routes |
 |---|---|
 | Overview | `/` |
-| People | `/students`, `/students/:uuid`, `/teachers`, `/users`, `/users/:uuid`, `/roles` |
-| Academics | `/classes`, `/sections`, `/subjects`, `/subjects/assignments`, `/timetable` |
-| Attendance | `/attendance`, `/attendance/records` |
+| People | `/students`, `/students/new`, `/students/:uuid`, `/teachers` |
+| Academics | `/academics/classes`, `/academics/sections`, `/academics/subjects`, `/academics/curriculum`, `/academics/timetable` |
+| Attendance | `/attendance/register`, `/attendance/records`, `/attendance/mine` |
 | Examinations | `/exams`, `/exams/:uuid`, `/exams/:uuid/analytics`, `/exams/:uuid/papers/:paperUuid`, `/results` |
-| Finance | `/invoices`, `/invoices/:uuid`, `/payments`, `/fees`, `/fees/categories`, `/checkout/:uuid` |
-| Communication | `/announcements` |
-| Administration | `/users`, `/roles`, `/audit`, `/profile` |
+| Finance | `/finance/fee-structures`, `/finance/fee-categories`, `/finance/invoices`, `/finance/invoices/:uuid`, `/finance/payments`, `/finance/checkout/:uuid` |
+| Communication | `/communication/announcements` |
+| Administration | `/admin/users`, `/admin/users/:uuid`, `/admin/roles`, `/admin/audit` |
+| Account | `/account/profile`, `/account/security/password` |
 
-Related views (Classes/Sections, Subjects/Class subjects, Mark
-attendance/Records, Fee structures/Categories, exam Papers/Analytics) are
-separate sidebar entries backed by the same page component and URL-driven tabs,
-so links, refresh and the back button behave predictably.
+Each workflow has its own URL. Legacy paths (`/classes`, `/fees`, `/audit`, …)
+redirect to the new locations, so old bookmarks keep working.
 
 ## Online fee payments
 
@@ -100,7 +99,7 @@ and topbar render only the sections a role can use.
 
 Every page sets a descriptive `document.title` via `usePageTitle` so the
 browser tab updates on client-side navigation. Admins see an **Audit log**
-page (`/audit`) with filters, search, pagination and CSV export of the
+page (`/admin/audit`) with filters, search, pagination and CSV export of the
 append-only `audit.AuditLog` (read-only API at `/api/v1/audit/`).
 
 ## Theme toggle
@@ -121,13 +120,13 @@ paint:
 
 Every design token has a dark counterpart in `styles.css` under
 `[data-theme="dark"]`, so both themes stay WCAG AA compliant (contrast fixed at
-the token level, `--muted` light `#667085` / dark `#8593b3`).
+the token level, `--muted` light `#637068` / dark `#8b9c91`).
 
 ## Build output
 
 The production bundle in `dist/` is committed and served by Django at `/` via
 the SPA fallback, so no separate static host is required. Latest build: CSS
-~46 kB (gzip ~10 kB) and JS ~466 kB (gzip ~120 kB).
+~69 kB (gzip ~14 kB) and JS ~484 kB (gzip ~123 kB).
 
 **Lighthouse audit** — every route scores **100 Accessibility / 100 Best
 Practices** with zero failures, in both light and dark themes. SEO is
