@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Eye, EyeOff, GraduationCap, KeyRound, LogOut, ShieldCheck } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -18,7 +18,7 @@ function strength(password) {
 }
 
 export default function ChangePassword() {
-  usePageTitle("Change Password");
+  usePageTitle("Change password");
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
@@ -27,10 +27,6 @@ export default function ChangePassword() {
   const [show, setShow] = useState(false);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    document.title = "Change password · School ERP";
-  }, []);
 
   const set = (key) => (event) => setForm((current) => ({ ...current, [key]: event.target.value }));
   const score = strength(form.new_password);

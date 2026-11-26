@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -8,12 +8,15 @@ import {
   GraduationCap,
   Lock,
   Mail,
+  Megaphone,
   ShieldCheck,
   Wallet,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useSettings } from "../context/SettingsContext";
 import { usePageTitle } from "../lib/usePageTitle";
 import { useToast } from "../context/ToastContext";
+import { withEmphasis } from "../lib/emphasis";
 import { DEMO_ACCOUNTS } from "../lib/constants";
 import { ErrorBanner, Spinner } from "../components/ui";
 
@@ -25,8 +28,9 @@ const HIGHLIGHTS = [
 ];
 
 export default function Login() {
-  usePageTitle("Login");
+  usePageTitle("Sign in");
   const { login, user, booting } = useAuth();
+  const { settings, schoolName, brandLine } = useSettings();
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
@@ -35,10 +39,6 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    document.title = "Sign in · School ERP";
-  }, []);
 
   if (!booting && user) {
     return <Navigate to={user.must_change_password ? "/change-password" : "/"} replace />;
@@ -70,23 +70,22 @@ export default function Login() {
     <main className="auth-page">
       <section className="auth-visual">
         <div className="auth-brand">
-          <div className="brand-mark">
-            <GraduationCap size={22} />
-          </div>
+          {settings.logo_url ? (
+            <img className="brand-logo" src={settings.logo_url} alt="" />
+          ) : (
+            <div className="brand-mark">
+              <GraduationCap size={22} />
+            </div>
+          )}
           <div className="brand-text">
-            <strong>School ERP</strong>
-            <span>Management console</span>
+            <strong>{schoolName}</strong>
+            <span>{brandLine}</span>
           </div>
         </div>
 
         <div className="auth-hero">
-          <h1>
-            Everything your school needs, <em>in one calm place.</em>
-          </h1>
-          <p>
-            Admissions, attendance, examinations and finance — connected so your
-            team can spend less time on admin and more time on students.
-          </p>
+          <h1>{withEmphasis(settings.login_headline)}</h1>
+          {settings.login_subtext ? <p>{settings.login_subtext}</p> : null}
           <div className="auth-features">
             {HIGHLIGHTS.map(({ icon: Icon, label }) => (
               <span className="auth-feature" key={label}>
@@ -98,12 +97,34 @@ export default function Login() {
         </div>
 
         <div className="auth-foot">
-          © {new Date().getFullYear()} School ERP · Built for schools that care about the details.
+          <span>
+            © {new Date().getFullYear()} {schoolName} · Built for schools that care about
+            the details.
+          </span>
+          {settings.email || settings.phone || settings.website ? (
+            <span className="auth-contact">
+              {settings.email ? (
+                <a href={`mailto:${settings.email}`}>{settings.email}</a>
+              ) : null}
+              {settings.phone ? <span>{settings.phone}</span> : null}
+              {settings.website ? (
+                <a href={settings.website} target="_blank" rel="noreferrer">
+                  {settings.website.replace(/^https?:\/\//, "")}
+                </a>
+              ) : null}
+            </span>
+          ) : null}
         </div>
       </section>
 
       <section className="auth-form-wrap">
         <div className="auth-card">
+          {settings.login_notice ? (
+            <div className="auth-notice" role="note">
+              <Megaphone size={15} aria-hidden="true" />
+              <span>{settings.login_notice}</span>
+            </div>
+          ) : null}
           <h2>Welcome back</h2>
           <p className="lead">Sign in with the email address provided by your school.</p>
 

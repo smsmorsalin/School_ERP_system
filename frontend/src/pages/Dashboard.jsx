@@ -68,7 +68,6 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    document.title = "Dashboard · School ERP";
     let active = true;
     api
       .get("/dashboard/overview/")

@@ -28,7 +28,24 @@ class SwaggerView(SpectacularSwaggerView):
         return [AllowAny()] if settings.DEBUG else [IsAdmin()]
 
 
-urlpatterns = [
+urlpatterns = []
+
+# The React console owns the /admin/users and /admin/settings screens, but
+# Django's own admin lives under the same prefix. Match the console routes
+# first so a hard load or refresh serves the SPA instead of the Django admin
+# login. Everything else under /admin/ still belongs to Django.
+if settings.FRONTEND_DIST.exists():
+    from apps.core.spa import SpaView
+
+    urlpatterns += [
+        re_path(
+            r"^admin/(?:users|settings)(?:/.*)?$",
+            SpaView.as_view(),
+            name="spa-admin-console",
+        ),
+    ]
+
+urlpatterns += [
     path("admin/", admin.site.urls),
     path("api/schema/", SchemaView.as_view(), name="schema"),
     path("api/docs/", SwaggerView.as_view(url_name="schema"), name="swagger-ui"),
@@ -40,6 +57,7 @@ urlpatterns = [
     path("api/v1/", include("apps.communication.urls")),
     path("api/v1/", include("apps.dashboard.urls")),
     path("api/v1/", include("apps.audit.urls")),
+    path("api/v1/", include("apps.core.urls")),
 ]
 
 # Media files are served by Django only in development. In production put
@@ -57,8 +75,6 @@ if settings.DEBUG:
 # (WHITENOISE_ROOT), and any non-API route falls back to index.html so that
 # client-side routing works.
 if settings.FRONTEND_DIST.exists():
-    from apps.core.spa import SpaView
-
     urlpatterns += [
         re_path(
             r"^(?!api/|admin/|static/|media/|assets/).*$",

@@ -34,6 +34,7 @@ import Users from "./pages/Users";
 import UserDetail from "./pages/UserDetail";
 import Roles from "./pages/Roles";
 import Audit from "./pages/Audit";
+import SettingsPage from "./pages/admin/SettingsPage";
 import Profile from "./pages/Profile";
 import PasswordPage from "./pages/account/PasswordPage";
 import NotFound from "./pages/NotFound";
@@ -338,6 +339,14 @@ export default function App() {
           element={
             <RequireRole roles={["Admin"]}>
               <Audit />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="admin/settings"
+          element={
+            <RequireRole roles={["Admin"]}>
+              <SettingsPage />
             </RequireRole>
           }
         />

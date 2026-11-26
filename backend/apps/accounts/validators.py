@@ -1,44 +1,20 @@
 """Validation helpers for the accounts app."""
 
-from pathlib import Path
-
-from django.core.exceptions import ValidationError
-from PIL import Image, UnidentifiedImageError
-
-MAX_IMAGE_SIZE = 2 * 1024 * 1024  # 2 MB
-ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
-ALLOWED_IMAGE_FORMATS = {"JPEG", "PNG", "WEBP"}
+from apps.core.validators.images import (
+    ALLOWED_IMAGE_EXTENSIONS,
+    ALLOWED_IMAGE_FORMATS,
+    MAX_IMAGE_SIZE,
+    validate_image_upload,
+)
 
 
 def validate_profile_image(file):
     """Reject oversized files, disguised extensions and malformed images.
 
-    The file is opened with Pillow to confirm it really is an image. This
-    defeats attacks that rename a script/HTML payload to ``.jpg``.
+    The shared validator opens the file with Pillow to confirm it really is an
+    image, which defeats attacks that rename a script/HTML payload to ``.jpg``.
     """
-    if file is None:
-        return
-
-    size = getattr(file, "size", None)
-    if size is not None and size > MAX_IMAGE_SIZE:
-        raise ValidationError("Profile images must be 2 MB or smaller.")
-
-    ext = Path(getattr(file, "name", "")).suffix.lower()
-    if ext not in ALLOWED_IMAGE_EXTENSIONS:
-        raise ValidationError("Only JPG, PNG or WebP images are allowed.")
-
-    try:
-        image = Image.open(file)
-        image.verify()
-        if image.format not in ALLOWED_IMAGE_FORMATS:
-            raise ValidationError("Unsupported image format.")
-    except (UnidentifiedImageError, OSError, ValueError) as exc:
-        raise ValidationError("The uploaded file is not a valid image.") from exc
-    finally:
-        try:
-            file.seek(0)
-        except Exception:
-            pass
+    return validate_image_upload(file, label="Profile images")
 
 
 class ComplexityPasswordValidator:

@@ -541,6 +541,54 @@ Expired announcements (`expires_at`) are hidden for non-admins.
 
 ---
 
+## School settings (branding & console defaults)
+
+A single school-wide settings record powers branding on the sign-in screen and
+the console. `GET` is public because the login page renders before anyone
+authenticates; it exposes presentation data only. `PATCH` is Admin-only and each
+change is audited as `core.schoolsettings.updated` with before/after snapshots.
+
+| Endpoint | Notes |
+|---|---|
+| `GET /settings/` | Public. Returns the current identity, logo/favicon URLs, sign-in copy, accent, default theme and density. |
+| `PATCH /settings/` | Admin only. Partial update; accepts JSON or `multipart/form-data` for logo and favicon uploads. |
+
+```json
+{
+  "school_name": "Green Valley High",
+  "short_name": "GVH",
+  "tagline": "Learning with purpose",
+  "address": "12 College Road, Dhaka",
+  "phone": "+880 1700 000000",
+  "email": "office@gvh.example",
+  "website": "https://gvh.example",
+  "logo_url": "https://erp.example/media/branding/logo.png",
+  "favicon_url": "https://erp.example/media/branding/favicon.png",
+  "login_headline": "Everything your school needs, *in one calm place.*",
+  "login_subtext": "Admissions, attendance, examinations and finance — in one place.",
+  "login_notice": "Admissions for 2026–27 are now open.",
+  "accent": "navy",
+  "default_theme": "system",
+  "compact_tables": false,
+  "updated_by_name": "System Administrator",
+  "updated_at": "2026-11-25T20:51:57Z"
+}
+```
+
+- `accent` — one of `forest` (default), `navy`, `plum`, `teal`, `maroon`.
+- `default_theme` — `system`, `light` or `dark`. A user's own Moon/Sun choice
+  still overrides it.
+- `compact_tables` — tighter row padding across list tables.
+- `login_headline` — the sign-in hero line. Text wrapped in `*asterisks*` is
+  rendered in the brass accent; plain text works too.
+- `login_subtext` / `login_notice` — supporting paragraph and an optional banner
+  above the sign-in form. Empty strings hide them.
+- Image uploads: send `logo` or `favicon` as a file (JPG/PNG/WebP, ≤ 2 MB,
+  MIME-sniffed with Pillow). Send `"remove_logo": true` / `"remove_favicon": true`
+  to delete one; omitting the field keeps the current image.
+
+---
+
 ## Audit log (Admin, read-only)
 
 An append-only record of create/update/delete activity on business models. It is

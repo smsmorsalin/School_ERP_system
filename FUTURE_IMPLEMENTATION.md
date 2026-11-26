@@ -397,7 +397,7 @@ Write `DESIGN.md` beside `PRODUCT.md` and link it from the README and
 production sidebar entry; `DESIGN.md` matches `styles.css`; both themes shown.
 
 ### 49. Frontend test suite (Vitest + Playwright)
-**Why:** the backend has 112 tests; the console has none.
+**Why:** the backend has 125 tests; the console has none.
 
 **Scope:** Vitest + React Testing Library for route guards, form validation, API
 error states, drawer open/close and the admission flow; Playwright for the five

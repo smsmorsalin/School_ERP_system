@@ -50,7 +50,7 @@ backend/
 │   └── middleware.py         # CSP + security headers
 ├── apps/
 │   ├── core/                 # BaseModel, RBAC permissions, pagination, filters,
-│   │                         # exceptions, middleware, SPA view, utils
+│   │                         # exceptions, middleware, school settings, SPA view, utils
 │   ├── accounts/             # custom User, Role/Permission, JWT auth, login history
 │   ├── academics/            # years, classes, sections, subjects, profiles,
 │   │                         # guardian links, timetable
@@ -61,7 +61,7 @@ backend/
 │   ├── communication/        # announcements + read receipts
 │   ├── dashboard/            # role-aware overview + global search + health
 │   └── audit/                # append-only AuditLog, signals, read-only API
-├── tests/                    # pytest suite (conftest + 12 modules, 112 tests)
+├── tests/                    # pytest suite (conftest + 15 modules, 125 tests)
 ├── manage.py
 └── requirements.txt
 ```

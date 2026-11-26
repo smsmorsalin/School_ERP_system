@@ -32,6 +32,7 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useSettings } from "../context/SettingsContext";
 import { useToast } from "../context/ToastContext";
 import { api } from "../lib/api";
 import { useAll, useDebounced } from "../lib/hooks";
@@ -100,6 +101,7 @@ const NAV_GROUPS = [
     items: [
       { to: "/admin/users", label: "User accounts", icon: UserCircle, roles: all("Admin") },
       { to: "/admin/roles", label: "Roles & access", icon: ShieldCheck, roles: all("Admin") },
+      { to: "/admin/settings", label: "Customisation", icon: Settings, roles: all("Admin") },
       { to: "/admin/audit", label: "Audit log", icon: Activity, roles: all("Admin") },
     ],
   },
@@ -127,6 +129,7 @@ const TITLES = {
   "/communication/announcements": ["Communication", "Announcements"],
   "/admin/users": ["Administration", "User accounts"],
   "/admin/roles": ["Administration", "Roles & access"],
+  "/admin/settings": ["Administration", "Customisation"],
   "/admin/audit": ["Administration", "Audit log"],
   "/account/profile": ["Account", "My profile"],
   "/account/security": ["Account", "Security"],
@@ -147,7 +150,8 @@ function contextFor(pathname) {
 }
 
 function Sidebar({ open, onClose }) {
-  const { user, logout, isAdmin, hasRole } = useAuth();
+  const { user, logout } = useAuth();
+  const { settings, schoolName, brandLine } = useSettings();
   const roleSet = user?.roles || [];
   const { data: years } = useAll("/academics/academic-years/", { ordering: "-start_date" });
   const currentYear = years.find((year) => year.is_current) || years[0];
@@ -166,12 +170,16 @@ function Sidebar({ open, onClose }) {
       {open ? <div className="sidebar-backdrop" onClick={onClose} /> : null}
       <aside className={`sidebar ${open ? "open" : ""}`}>
         <div className="sidebar-brand">
-          <div className="brand-mark">
-            <GraduationCap size={22} />
-          </div>
+          {settings.logo_url ? (
+            <img className="brand-logo" src={settings.logo_url} alt="" />
+          ) : (
+            <div className="brand-mark">
+              <GraduationCap size={22} />
+            </div>
+          )}
           <div className="brand-text">
-            <strong>School ERP</strong>
-            <span>Management console</span>
+            <strong>{schoolName}</strong>
+            <span>{brandLine}</span>
           </div>
           <button
             type="button"
@@ -224,7 +232,6 @@ function Sidebar({ open, onClose }) {
               <strong>{user?.full_name}</strong>
               <span>{user?.primary_role || "Member"}</span>
             </div>
-            {isAdmin || hasRole("Admin") ? <Settings size={14} /> : null}
           </NavLink>
           <button
             type="button"

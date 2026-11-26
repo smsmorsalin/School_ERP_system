@@ -16,6 +16,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from django.db import connection, transaction
+from django.db.models.fields.files import FieldFile
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
@@ -53,6 +54,9 @@ def _snapshot(instance):
         value = getattr(instance, field.attname)
         if isinstance(value, Decimal):
             value = str(value)
+        elif isinstance(value, FieldFile):
+            # Store the relative path, never the FieldFile wrapper.
+            value = value.name or ""
         elif hasattr(value, "isoformat"):
             value = value.isoformat()
         elif hasattr(value, "hex"):

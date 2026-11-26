@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, GraduationCap, KeyRound, ShieldCheck } from "lucide-react";
 import { api } from "../lib/api";
@@ -7,7 +7,7 @@ import { useToast } from "../context/ToastContext";
 import { ErrorBanner, Field, Notice, Spinner } from "../components/ui";
 
 export default function ResetPassword() {
-  usePageTitle("Reset Password");
+  usePageTitle("Choose a new password");
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const toast = useToast();
@@ -17,10 +17,6 @@ export default function ResetPassword() {
   const [show, setShow] = useState(false);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    document.title = "Choose a new password · School ERP";
-  }, []);
 
   const submit = async (event) => {
     event.preventDefault();

@@ -32,6 +32,12 @@ students.
   (bKash, Nagad, Rocket, other mobile banking, cards and bank transfer) for
   students and parents.
 - **Communication** — role/class-targeted announcements with read receipts.
+- **Console customisation** — admins set the school name, short name, tagline,
+  contact details, logo and favicon; write the sign-in headline, supporting text
+  and notice banner; pick one of five curated accent palettes; and choose the
+  console's default theme and table density. Branding also styles the sign-in
+  screen, and each user's own Moon/Sun choice still wins. See
+  [Customisation](#-customisation-admin).
 - **Dashboard** — role-aware overview with charts and a global search.
 - **Audit trail** — an immutable, append-only log of every create/update/delete
   on business data (payments, invoices, users, roles, marks, etc.), viewable by
@@ -57,7 +63,7 @@ open in a right-hand drawer over the list they belong to; multi-step work
 | **Examinations** | Exams · exam workspace (`/exams/:uuid`) · analytics (`/exams/:uuid/analytics`) · mark entry (`/exams/:uuid/papers/:paperUuid`) · Results |
 | **Finance** | Invoices · invoice detail (`/finance/invoices/:uuid`) · Payments · Fee structures · Fee categories · secure checkout (`/finance/checkout/:uuid`) |
 | **Communication** | Announcements |
-| **Administration** | User accounts · user detail (`/admin/users/:uuid`) · Roles & access · Audit log |
+| **Administration** | User accounts · user detail (`/admin/users/:uuid`) · Roles & access · Customisation (`/admin/settings`) · Audit log |
 | **Account** | My profile · Change password |
 
 Sidebar items are filtered by role. Students and parents get read-only variants
@@ -70,6 +76,37 @@ record, related data and lifecycle actions. Legacy URLs (`/classes`, `/fees`,
 to the new locations, so old bookmarks keep working.
 
 
+## 🎛️ Customisation (Admin)
+
+**Administration → Customisation** (`/admin/settings`) lets a system admin make
+the console feel like their school without touching code. Every save is written
+to the audit trail with before/after values.
+
+| Area | What you can set |
+|---|---|
+| **Identity** | School name, short name (sidebar label), tagline, postal address, phone, email, website |
+| **Marks** | Logo for the sidebar and sign-in screen, plus a square favicon for browser tabs (JPG/PNG/WebP, ≤ 2 MB) |
+| **Sign-in screen** | Headline (wrap words in `*asterisks*` to tint them brass), supporting paragraph, optional notice banner |
+| **Colour theme** | `forest` (default), `navy`, `plum`, `teal` or `maroon` — all contrast-checked in light and dark |
+| **Console defaults** | Default appearance (`system` / `light` / `dark`) and compact table rows |
+
+How the defaults behave:
+
+- Branding is public at `GET /api/v1/settings/` so the sign-in screen can render
+  the school's name, logo and favicon before anyone authenticates. Writes are
+  Admin-only (`PATCH /api/v1/settings/`) and audited.
+- A signed-in user's own Moon/Sun choice (`school-erp-theme`) overrides the
+  school default. The default is cached as `school-erp-default-theme` so the
+  inline bootstrap paints the right theme before React loads — no flash.
+- The selected accent and table density are applied through `data-accent` and
+  `data-density` on `<html>`, and the favicon URL is versioned so browser tabs
+  refresh after an upload.
+- "Restore defaults" resets every field to the built-in values; it does not save
+  until you press **Save customisation**.
+
+The same record is editable in Django admin under **School settings**, but the
+console page is the intended workflow.
+
 ## 🧱 Tech Stack
 
 | Layer     | Technology                                                                 |
@@ -80,7 +117,7 @@ to the new locations, so old bookmarks keep working.
 | Database  | SQLite (development), PostgreSQL (production) via `psycopg` 3.2.9           |
 | Frontend  | React 18.3.1, react-router-dom 6.26.2, lucide-react 0.451.0                 |
 | Frontend  | Vite 5.4.8, plain CSS (custom design system)                                |
-| Testing   | pytest 8.4.2, pytest-django 4.11.1 (112 tests)                              |
+| Testing   | pytest 8.4.2, pytest-django 4.11.1 (125 tests)                              |
 
 ## 📁 Project Structure
 
@@ -98,8 +135,8 @@ School_ERP_system/
 │   │   ├── communication/      # Targeted announcements and read receipts
 │   │   ├── dashboard/          # Role-aware overview and global search
 │   │   ├── audit/              # Append-only audit log (models, signals, API)
-│   │   └── core/               # Base models, RBAC, pagination, middleware, SPA
-│   ├── tests/                  # pytest suite (112 tests, 12 modules)
+│   │   └── core/               # Base models, RBAC, pagination, school settings, SPA
+│   ├── tests/                  # pytest suite (125 tests, 15 modules)
 │   ├── manage.py
 │   ├── requirements.txt
 │   └── .env.example
@@ -222,7 +259,7 @@ See **[DEPLOYMENT.md](DEPLOYMENT.md)** for the full guide and
 
 ```bash
 cd backend
-.venv/bin/python -m pytest        # 112 tests, all green
+.venv/bin/python -m pytest        # 125 tests, all green
 ```
 
 The suite covers authentication, account lockout, JWT rotation/blacklisting,
@@ -287,10 +324,18 @@ not scored: the ERP is a private console and `robots.txt` disallows crawling.
 - **Responsive:** the sidebar becomes an off-canvas panel below 960px, list
   grids collapse to one column, tables scroll inside their card and page
   actions wrap instead of overflowing.
-- **Light/dark toggle:** a topbar Moon/Sun theme switcher (persisted to
-  `localStorage` as `school-erp-theme`) with an inline theme bootstrap in
-  `index.html` so `data-theme` is set before first paint — no flash of the
-  wrong theme.
+- **Theming:** a topbar Moon/Sun switcher (persisted to `localStorage` as
+  `school-erp-theme`) with an inline theme bootstrap in `index.html` so
+  `data-theme` is set before first paint — no flash of the wrong theme. A user's
+  explicit choice overrides the school default set at
+  **Administration → Customisation**, which is cached separately as
+  `school-erp-default-theme`.
+- **Branding:** the school name, short name, tagline, contact details, logo and
+  favicon come from `GET /api/v1/settings/` and style the sidebar, browser tab
+  and sign-in screen. Admins write the sign-in headline, supporting text and an
+  optional notice banner, and choose one of five contrast-checked accent palettes
+  (`forest`, `navy`, `plum`, `teal`, `maroon`) plus an optional compact table
+  density; the brass accent stays constant so status colours keep their meaning.
 - **robots.txt:** served from `frontend/public/` via WhiteNoise (`Disallow: /`
   — the ERP is a private console, not a public site).
 
@@ -323,6 +368,7 @@ All endpoints are under `/api/v1/` and use UUID lookup. Paginated responses use:
 | Finance       | `finance/` (fee-categories, fee-structures, invoices, payments, payment-gateways, payment-intents, payment-webhook) |
 | Communication | `announcements/`                        |
 | Dashboard     | `dashboard/overview`, `dashboard/search`, `health` |
+| Settings      | `settings/` (public read, Admin write)  |
 | Audit         | `audit/` (admin-only, read-only)        |
 
 ## 🛠️ Management Commands
@@ -339,10 +385,11 @@ All endpoints are under `/api/v1/` and use UUID lookup. Paginated responses use:
 - **Version:** 1.0.0
 - **Status:** ✅ Complete — backend + frontend + tests + docs
 - **Roles:** Admin, Teacher, Accountant, Student, Parent
-- **Tests:** 112 passing
+- **Tests:** 125 passing
 - **Accessibility:** 100 Accessibility / 100 Best Practices (Lighthouse, main routes, light + dark); SEO intentionally disabled via `robots.txt`
 - **Console:** grouped sidebar with one workflow per page, right-hand drawers for long forms, full-page admissions flow, legacy URL redirects
-- **Theme:** light/dark toggle (Moon/Sun) persisted to localStorage
+- **Theme:** school default set by Admin (light/dark/system) plus a per-user Moon/Sun override persisted to localStorage
+- **Customisation:** school identity, logo, five curated accent palettes and compact tables, edited at `/admin/settings` and audited
 - **Online payments:** Sandbox-ready; live mode requires provider credentials
 - **Audit:** Append-only trail with admin viewer and read-only API
 - **License:** MIT

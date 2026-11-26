@@ -47,7 +47,7 @@ const emptyForm = {
 };
 
 export default function Profile() {
-  usePageTitle("Profile");
+  usePageTitle("My profile");
   const { user, refreshUser, logout } = useAuth();
   const toast = useToast();
   const fileRef = useRef(null);
@@ -58,10 +58,6 @@ export default function Profile() {
   const [busy, setBusy] = useState(false);
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
-
-  useEffect(() => {
-    document.title = "My profile · School ERP";
-  }, []);
 
   useEffect(() => {
     if (!user) return;

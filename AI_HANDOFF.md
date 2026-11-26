@@ -16,7 +16,7 @@ The project is a **full-stack School ERP / school management system**:
 
 - **Backend:** Django 6 + Django REST Framework, JWT auth, role-based access control (RBAC), SQLite in development / PostgreSQL for production.
 - **Frontend:** React 18 + Vite 5 single-page app (plain CSS, `lucide-react` icons, custom SVG charts), built into `frontend/dist` and served by Django.
-- **Status:** Feature-complete for the original scope plus **secure online fee payments** (bKash, Nagad, Rocket, other mobile banking, card, bank) and an **append-only audit trail**. The console has been restructured around list → detail/workspace pages. **112 automated tests pass.** All five roles have been smoke-tested in a real browser, and the payment backend is fully covered by tests. Security hardening is implemented and verified.
+- **Status:** Feature-complete for the original scope plus **secure online fee payments** (bKash, Nagad, Rocket, other mobile banking, card, bank) and an **append-only audit trail**. The console has been restructured around list → detail/workspace pages. **125 automated tests pass.** All five roles have been smoke-tested in a real browser, and the payment backend is fully covered by tests. Security hardening is implemented and verified.
 - **What remains:** optional polish, live provider adapters (needs merchant credentials), and deployment on real infrastructure. See §5.
 
 **If you are an AI resuming this project:** run §2 (setup), run §8 (tests),
@@ -66,7 +66,7 @@ School_ERP_system/
 │   │   ├── communication/     ← announcements + read tracking
 │   │   ├── dashboard/         ← role-aware overview, global search, health
 │   │   └── audit/             ← append-only AuditLog, signals, read-only API
-│   ├── tests/                 ← 112 pytest tests (conftest + 12 modules)
+│   ├── tests/                 ← 125 pytest tests (conftest + 15 modules)
 │   ├── staticfiles/
 │   └── media/
 └── frontend/
@@ -209,7 +209,7 @@ timetable, attendance, exams/results, invoices/payments and announcements.
       insecure refresh cookie, `PAYMENT_SANDBOX=True`, or live payments enabled
       without a strong webhook secret and HTTPS checkout base. Schema/docs are
       admin-only in production.
-- [x] 112-test pytest suite — **all passing** (`cd backend && .venv/bin/python -m pytest -q`).
+- [x] 125-test pytest suite — **all passing** (`cd backend && .venv/bin/python -m pytest -q`).
 - [x] **Audit log** — append-only `audit.AuditLog` populated by `post_save`/
       `post_delete` signals for business apps (accounts, academics, attendance,
       exams, finance, communication). Captures actor, action, target,
@@ -263,7 +263,7 @@ before and after changing it.
 
 ### P0 — must verify on resume (do first, ~10 minutes)
 
-- [x] Run the backend test suite (§8) and confirm **112 passed**.
+- [x] Run the backend test suite (§8) and confirm **125 passed**.
 - [x] Run `npm install && npm run build` in `frontend/` — the build succeeds
       (1612 modules) and `frontend/dist` contains the current IA.
 - [x] End-to-end verified over real HTTP against the dev server: student login →
@@ -458,6 +458,7 @@ prioritised backlog (P0 through P6) and the pre-push checklist.
 | `/users` | User account directory | Admin |
 | `/users/:uuid` | Account profile — access, security, sign-in history, lifecycle | Admin |
 | `/roles` | Roles & access | Admin |
+| `/admin/settings` | Customisation — identity, logo, accent, console defaults | Admin |
 | `/audit` | Audit log | Admin |
 | `/classes` | Classes (tab) | All signed-in roles |
 | `/sections` | Sections (tab, same component) | All signed-in roles |
@@ -532,7 +533,7 @@ test for both an allowed and a forbidden role.
 
 ```bash
 cd backend
-.venv/bin/python -m pytest -q          # 112 tests, expected all green
+.venv/bin/python -m pytest -q          # 125 tests, expected all green
 .venv/bin/python -m pytest -q tests/test_auth.py   # one module
 .venv/bin/python manage.py check
 .venv/bin/python manage.py makemigrations --check --dry-run
@@ -733,6 +734,39 @@ DJANGO_SETTINGS_MODULE=config.settings.production .venv/bin/python -c \
 
 ## 13. Session log (append newest at the top)
 
+### 2026-11-25 — School customisation (branding, accent, console defaults)
+- New singleton `core.SchoolSettings` (fixed UUID PK so audit `target_uuid`
+  works) with identity, contact, logo, favicon, sign-in copy, accent,
+  `default_theme` and `compact_tables`. Migration `core/0001_initial.py` plus
+  `core/0002_…` for the sign-in extras.
+- New API: `GET /api/v1/settings/` is public (presentation data only, needed by
+  the sign-in screen); `PATCH` is Admin-only and audited as
+  `core.schoolsettings.updated` with before/after snapshots. Logo and favicon
+  uploads are MIME-sniffed (JPG/PNG/WebP, ≤ 2 MB); `remove_logo` /
+  `remove_favicon` delete them and omitting a field preserves the current image.
+- Frontend: `SettingsContext` applies branding live (`data-accent` /
+  `data-density` on `<html>`, favicon with a cache-busting version), sidebar and
+  login show school name/logo, and the new **Administration → Customisation**
+  page (`/admin/settings`) edits identity, images, sign-in headline/supporting
+  text/notice, one of five curated palettes and console defaults with a live
+  console + sign-in preview and dirty-state guard. `*asterisks*` in the headline
+  render brass.
+- Default theme is cached as `school-erp-default-theme` so `theme-init.js`
+  paints correctly before React; an explicit user choice
+  (`school-erp-theme`) still wins. The provider waits for the first successful
+  fetch before touching the theme, so a cached default is never flashed over.
+- Fixed the audit `_snapshot` helper to serialise `FieldFile` values, and a
+  serializer bug where any PATCH without `logo` erased the current file.
+- Fixed a production routing bug: Django's `admin/` prefix was swallowing the
+  console's `/admin/settings` and `/admin/users` deep links. Those two prefixes
+  now resolve to the SPA before Django admin; the rest of `/admin/` still
+  belongs to Django.
+- Added `tests/test_settings.py` (11 tests) and `tests/test_spa.py` (2 tests).
+  Full suite: **125 passed**; `npm run build` green. Browser-verified as Admin
+  (save, audit entry, logo and favicon upload/remove, live sign-in preview,
+  sidebar/login branding, dark accent contrast, compact rows), as Student
+  (access guard), and via the Docker build (`/admin/settings` deep link).
+
 ### 2026-11-19 — Information architecture: list → detail/workspace pages
 - Split the busiest screens into directory + dedicated pages:
   `/students/:uuid` (student profile), `/users/:uuid` (account profile),
@@ -828,7 +862,7 @@ DJANGO_SETTINGS_MODULE=config.settings.production .venv/bin/python -c \
 
 ## 14. Definition of "done" (final acceptance checklist)
 
-- [x] `pytest -q` all green (currently 112).
+- [x] `pytest -q` all green (currently 125).
 - [x] `manage.py check` clean; `makemigrations --check` reports no changes.
 - [x] `npm run build` succeeds; `frontend/dist` updated.
 - [x] Sandbox checkout verified end-to-end over HTTP from `/invoices`

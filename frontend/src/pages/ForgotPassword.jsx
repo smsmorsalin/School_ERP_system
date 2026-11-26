@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, GraduationCap, Mail, Send } from "lucide-react";
 import { api } from "../lib/api";
@@ -6,15 +6,11 @@ import { usePageTitle } from "../lib/usePageTitle";
 import { ErrorBanner, Field, Notice, Spinner } from "../components/ui";
 
 export default function ForgotPassword() {
-  usePageTitle("Forgot Password");
+  usePageTitle("Reset password");
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    document.title = "Reset password · School ERP";
-  }, []);
 
   const submit = async (event) => {
     event.preventDefault();
