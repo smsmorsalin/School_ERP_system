@@ -6,7 +6,9 @@ prioritised from "should do before go-live" to "optional polish / feature ideas"
 Items marked **[done]** have been implemented and verified (see `AI_HANDOFF.md`).
 New analysis-driven items are grouped under **P3.5 — New opportunities**.
 The page-per-workflow console redesign produced a queued backlog in
-**P3.6 — Console & workflow backlog**.
+**P3.6 — Console & workflow backlog**. School branding / console customisation
+is live, and its follow-ups are grouped in
+**P3.7 — Branding & customisation follow-ups**.
 
 ---
 
@@ -439,6 +441,106 @@ a reset-to-default action.
 **Acceptance:** layout has no shift on load; each widget has an empty state;
 students/parents only see their own data; preference is stored per user.
 
+---
+
+## P3.7 — Branding & customisation follow-ups
+
+The school-wide customisation page (`/admin/settings`) now covers identity, logo,
+favicon, sign-in copy, accent palette, default theme and table density. These
+items extend that foundation without reopening its design.
+
+| # | Task | Surface | API? |
+|---|------|---------|------|
+| 53 | Per-user appearance & density preferences | Frontend + API | Yes |
+| 54 | Dark-surface logo variant | Frontend + API | Yes |
+| 55 | Branded email templates | Backend | No |
+| 56 | Web app manifest & install icons | Frontend + API | Partial |
+| 57 | Custom brand colour with contrast guard | Frontend + API | Yes |
+| 58 | First-run branding step in onboarding | Frontend | No |
+
+### 53. Per-user appearance & density preferences
+**Why:** the school default is shared by everyone, but staff work on different
+devices and some prefer a denser table or a fixed theme. Today only Moon/Sun is
+remembered, in `localStorage`, so the choice does not follow the user.
+
+**Scope:** store `theme` (`system` / `light` / `dark`, blank = inherit school
+default) and `compact_tables` (`null` = inherit) on the user profile, surfaced
+as a **Preferences** card on `/profile`. `SettingsContext` merges the signed-in
+user's values over the school defaults; keep the `school-erp-theme` cache for
+pre-paint and refresh it from the profile after login.
+
+**Acceptance:** unset values inherit the school default; an explicit choice
+persists across devices and wins; the pre-paint bootstrap still matches the first
+render; "Use school default" clears the override; the `me` payload carries the
+preferences so no extra request is needed per page.
+
+### 54. Dark-surface logo variant
+**Why:** the uploaded logo is shown on a white chip, which is safe but can look
+heavy in the dark sidebar. Schools with a light or transparent mark often need a
+second version.
+
+**Scope:** optional `logo_dark` upload (same validator and audit behaviour as
+the main logo) with `logo_dark_url`; the sidebar and sign-in screen use it when
+`data-theme="dark"`, falling back to the main logo. Show both in the settings
+page with a clear preview against the dark surface.
+
+**Acceptance:** dark theme uses the variant, light theme uses the main logo, and
+removal falls back cleanly; no layout shift between themes; upload/remove is
+audited; an unrelated save never deletes either file.
+
+### 55. Branded email templates
+**Why:** the console carries the school's identity, but password-reset and
+fee-reminder emails still look like plain Django mail.
+
+**Scope:** a shared HTML + plain-text email base built from the settings record
+(school name, logo, contact details, footer), applied to password reset and fee
+reminders first. Inline CSS only, absolute logo URLs, no tracking pixels, and a
+sensible text fallback.
+
+**Acceptance:** messages render in common clients (Gmail, Outlook, Apple Mail);
+the text part carries the same links; logo URLs are absolute and safe when
+branding is unset; tests use the locmem backend and assert the school name and
+reset link are present.
+
+### 56. Web app manifest & install icons
+**Why:** the favicon is customisable, but installing the console to a phone or
+desktop home screen still uses generic metadata.
+
+**Scope:** serve `/manifest.webmanifest` generated from the settings record
+(name, short name, `theme_color`, 192/512 px icons plus a maskable icon), add
+`apple-touch-icon` and keep `<meta name="theme-color">` in sync with the
+light/dark tokens. Cache the manifest briefly and bust it when settings change.
+
+**Acceptance:** the manifest validates; install surfaces the school name and
+icon; theme colour matches the active theme; no private data or API responses are
+cached; built-in defaults apply when no branding is uploaded.
+
+### 57. Custom brand colour with contrast guard
+**Why:** five curated palettes cover most schools, but some have a mandated
+brand colour. Free-form hex input is risky for accessibility.
+
+**Scope:** an optional custom accent alongside the presets. Validate the colour
+server-side (WCAG AA for primary-on-surface and white-on-primary in both themes),
+derive `--primary`, `--primary-dark`, `--primary-light`, `--primary-soft`,
+`--ring` and sidebar shades, and reject low-contrast values with a specific
+error. Keep the curated palettes as one-click presets.
+
+**Acceptance:** generated tokens pass automated contrast checks in light and
+dark; invalid colours are rejected with actionable copy; the live preview and
+login screen match the saved tokens; resetting returns to a preset; every change
+is audited.
+
+### 58. First-run branding step in onboarding
+**Why:** a new install lands on an unbranded console, and the first-run
+checklist (task 47) should send admins to branding before they invite staff.
+
+**Scope:** add a "Make it your school" step to the checklist that deep-links to
+`/admin/settings` with a return path, and marks complete once the name (and
+optionally logo/accent) differs from the defaults.
+
+**Acceptance:** the step tracks completion, skipping is allowed, returning lands
+back on the checklist, and no duplicate prompt appears after dismissal.
+
 ### Suggested delivery order
 
 | Wave | Tasks | Reason |
@@ -447,6 +549,7 @@ students/parents only see their own data; preference is stored per user.
 | 2 — academic operations | 38, 40, 41, 42 | Highest daily value for Admin/Teacher |
 | 3 — people & admissions | 39, 44, 45 | Extends the student lifecycle |
 | 4 — scale & polish | 43, 46, 50, 51, 52 | Efficiency and presentation once the core is stable |
+| 5 — branding follow-ups | 55, 56, 53, 54, 57, 58 | Reach and consistency first, then per-user and logo polish |
 
 ---
 
